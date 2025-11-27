@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 
 // --- QUAN TRỌNG: THAY THẾ CÁC GIÁ TRỊ DƯỚI ĐÂY BẰNG THÔNG TIN TỪ FIREBASE CONSOLE CỦA BẠN ---
 const firebaseConfig = {
-  apiKey: "API_KEY_CUA_BAN", 
+  apiKey: "AIzaSyAS9G31URd2WN3qzOy74IMr8qH0VItjgB0", 
   authDomain: "PROJECT_ID.firebaseapp.com",
   projectId: "PROJECT_ID",
   storageBucket: "PROJECT_ID.firebasestorage.app",
