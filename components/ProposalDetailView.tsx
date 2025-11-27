@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
@@ -50,7 +51,11 @@ const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose
         <DetailSection title="Services & Pricing">
             <ul className="list-disc pl-5 space-y-1">
                 {proposal.services.map(s => (
-                    <li key={s.id}>{s.name}: <span className="line-through">{s.fullPrice.toLocaleString()}</span> &rarr; <span className="font-bold text-[#E5989B]">{s.discountPrice.toLocaleString()}</span></li>
+                    <li key={s.id}>
+                        {s.name}
+                        {s.isCombo && <span className="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">COMBO</span>}
+                        : <span className="line-through">{s.fullPrice.toLocaleString()}</span> &rarr; <span className="font-bold text-[#E5989B]">{s.discountPrice.toLocaleString()}</span>
+                    </li>
                 ))}
             </ul>
         </DetailSection>

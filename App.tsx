@@ -3,24 +3,37 @@ import React, { useState, useMemo } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import ServiceManagement from './components/ServiceManagement';
-import { USERS, SERVICES as INITIAL_SERVICES, PROMOTIONS } from './constants';
-import { Role, User, Promotion, Service } from './types';
+import { USERS as INITIAL_USERS, SERVICES as INITIAL_SERVICES, PROMOTIONS } from './constants';
+import { User, Promotion, Service, Role } from './types';
 
 type View = 'dashboard' | 'services';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User>(USERS[0]);
+  // We maintain a list of 4 users (one for each role)
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  // Current active role determines the "logged in" user
+  const [currentRole, setCurrentRole] = useState<Role>(Role.Sales); // Default to Sales view
+  
   const [promotions, setPromotions] = useState<Promotion[]>(PROMOTIONS);
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
   const [view, setView] = useState<View>('dashboard');
   
-  const handleRoleChange = (role: Role) => {
-    const newUser = USERS.find(user => user.role === role);
-    if (newUser) {
-      setCurrentUser(newUser);
-    }
+  // Computed current user based on selected role
+  const currentUser = useMemo(() => {
+    return users.find(u => u.role === currentRole) || users[0];
+  }, [users, currentRole]);
+
+  // --- Auth & User Logic ---
+  const handleSwitchRole = (role: Role) => {
+    setCurrentRole(role);
+    setView('dashboard'); // Optional: Reset to dashboard when switching roles
   };
 
+  const handleUpdateUserName = (newName: string) => {
+    setUsers(prev => prev.map(u => u.role === currentRole ? { ...u, name: newName } : u));
+  };
+
+  // --- Promotion Management ---
   const addPromotion = (newPromotion: Omit<Promotion, 'id'>) => {
     setPromotions(prev => [
       ...prev,
@@ -37,6 +50,7 @@ const App: React.FC = () => {
     );
   };
 
+  // --- Service Management ---
   const addService = (newService: Omit<Service, 'id'>) => {
     setServices(prev => [
         ...prev,
@@ -70,26 +84,28 @@ const App: React.FC = () => {
     return promotions.filter(p => p.status !== 'Approved' || new Date(p.startDate) > new Date());
   }, [promotions]);
 
-
   return (
     <div className="min-h-screen bg-[#FDF7F8] text-[#5C3A3A]">
       <Header
         currentUser={currentUser}
-        onRoleChange={handleRoleChange}
+        onSwitchRole={handleSwitchRole}
+        onUpdateUserName={handleUpdateUserName}
         currentView={view}
         onViewChange={setView}
       />
       <main className="p-4 sm:p-6 lg:p-8">
-        {view === 'dashboard' ? (
+        {view === 'dashboard' && (
           <Dashboard
-            currentUser={currentUser}
+            loggedInUser={currentUser}
             services={services}
             activePromotions={activePromotions}
             proposalPromotions={proposalPromotions}
             onAddPromotion={addPromotion}
             onUpdatePromotion={updatePromotion}
           />
-        ) : (
+        )}
+        
+        {view === 'services' && (
           <ServiceManagement
             services={services}
             onAddService={addService}

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User, Service, Promotion, Role, PromotionStatus } from '../types';
 import Button from './shared/Button';
@@ -6,7 +7,7 @@ import ProposalForm from './ProposalForm';
 import ProposalDetailView from './ProposalDetailView';
 
 interface DashboardProps {
-  currentUser: User;
+  loggedInUser: User;
   services: Service[];
   activePromotions: Promotion[];
   proposalPromotions: Promotion[];
@@ -24,12 +25,13 @@ const getStatusColor = (status: PromotionStatus) => {
     }
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ currentUser, services, activePromotions, proposalPromotions, onAddPromotion, onUpdatePromotion }) => {
+const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePromotions, proposalPromotions, onAddPromotion, onUpdatePromotion }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Promotion | null>(null);
   const [editingProposal, setEditingProposal] = useState<Promotion | null>(null);
 
-  const canViewProposals = [Role.Sales, Role.Marketing, Role.Management].includes(currentUser.role);
+  const canViewProposals = [Role.Sales, Role.Marketing, Role.Management].includes(loggedInUser.role);
+  const isManagement = loggedInUser.role === Role.Management;
 
   const handleOpenCreateForm = () => {
     setEditingProposal(null);
@@ -72,6 +74,8 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, services, activeProm
                 title={promo.name}
                 subtitle={`Valid from ${promo.startDate} to ${promo.endDate}`}
                 services={promo.services}
+                canEdit={isManagement}
+                onEdit={() => handleOpenEditForm(promo)}
               />
             ))}
           </div>
@@ -86,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, services, activeProm
         <div>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Promotion Proposals</h2>
-            {currentUser.role === Role.Sales && (
+            {loggedInUser.role === Role.Sales && (
               <Button onClick={handleOpenCreateForm}>
                 + Propose New Promotion
               </Button>
@@ -105,7 +109,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, services, activeProm
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {proposalPromotions.map(promo => {
-                  const canEdit = currentUser.role === Role.Sales && promo.proposerId === currentUser.id && promo.status === PromotionStatus.PendingDesign;
+                  const canEdit = loggedInUser.role === Role.Sales && promo.proposerId === loggedInUser.id && promo.status === PromotionStatus.PendingDesign;
                   return (
                     <tr key={promo.id} className="hover:bg-gray-50">
                       <td className="py-4 px-6 whitespace-nowrap font-medium text-gray-900">{promo.name}</td>
@@ -135,7 +139,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, services, activeProm
         isOpen={isFormOpen}
         onClose={handleFormClose}
         services={services}
-        currentUser={currentUser}
+        currentUser={loggedInUser}
         onSubmit={handleFormSubmit}
         promotionToEdit={editingProposal}
       />
@@ -145,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ currentUser, services, activeProm
           isOpen={!!selectedProposal}
           onClose={() => setSelectedProposal(null)}
           proposal={selectedProposal}
-          currentUser={currentUser}
+          currentUser={loggedInUser}
           onUpdate={onUpdatePromotion}
         />
       )}

@@ -1,10 +1,12 @@
+
 import { User, Service, Promotion, Role, PromotionStatus } from './types';
 
+// Default users representing the 4 roles
 export const USERS: User[] = [
-  { id: 'user-1', name: 'Loan (Lễ tân)', role: Role.Reception },
-  { id: 'user-2', name: 'Minh (Sale)', role: Role.Sales },
-  { id: 'user-3', name: 'Hà (Marketing)', role: Role.Marketing },
-  { id: 'user-4', name: 'Anh Tuấn (Sếp)', role: Role.Management },
+  { id: 'user-sales', name: 'Team Sale', role: Role.Sales, username: 'sale' },
+  { id: 'user-mkt', name: 'Team Marketing', role: Role.Marketing, username: 'mkt' },
+  { id: 'user-boss', name: 'Anh Tuấn', role: Role.Management, username: 'admin' },
+  { id: 'user-reception', name: 'Lễ Tân', role: Role.Reception, username: 'reception' },
 ];
 
 const FACIAL_SERVICES: Service[] = [
@@ -43,7 +45,7 @@ export const PROMOTIONS: Promotion[] = [
     startDate: '2025-11-25',
     endDate: '2025-12-15',
     status: PromotionStatus.Approved,
-    proposerId: 'user-2',
+    proposerId: 'user-sales',
     designUrl: 'https://picsum.photos/1080/1920',
     salesNotes: "Chương trình sale cuối năm để kích cầu.",
     marketingNotes: "Design theo tone hồng chủ đạo, nhẹ nhàng.",
@@ -62,7 +64,7 @@ export const PROMOTIONS: Promotion[] = [
     startDate: '2025-06-01',
     endDate: '2025-06-30',
     status: PromotionStatus.PendingDesign,
-    proposerId: 'user-2',
+    proposerId: 'user-sales',
     salesNotes: "Tập trung vào các dịch vụ làm sáng da và thư giãn.",
     services: [
       { ...SERVICES[0], fullPrice: SERVICES[0].pricePerSession, discountPrice: 3500000 },
@@ -76,7 +78,7 @@ export const PROMOTIONS: Promotion[] = [
     startDate: '2025-10-10',
     endDate: '2025-10-20',
     status: PromotionStatus.PendingApproval,
-    proposerId: 'user-2',
+    proposerId: 'user-sales',
     designUrl: 'https://picsum.photos/1080/1920',
     salesNotes: "Chương trình cho ngày 20/10.",
     marketingNotes: "Thiết kế đã xong, chờ sếp duyệt.",

@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
-import { Service, Promotion, PromotionService, PromotionStatus, User } from '../types';
+import { Service, Promotion, PromotionService, PromotionStatus, User, Role } from '../types';
 
 interface ProposalFormProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
   const [comboSelectionIds, setComboSelectionIds] = useState<string[]>([]);
 
   const isEditMode = !!promotionToEdit;
+  const isEditingActive = isEditMode && promotionToEdit?.status === PromotionStatus.Approved && currentUser.role === Role.Management;
 
   useEffect(() => {
     if (isOpen) {
@@ -147,8 +149,20 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
     }
   };
 
+  const formTitle = isEditingActive 
+    ? "Chỉnh sửa Chương trình Đang chạy" 
+    : isEditMode 
+        ? "Chỉnh sửa Đề xuất" 
+        : "Tạo Đề xuất Khuyến mãi";
+
+  const submitButtonText = isEditingActive
+    ? "Lưu thay đổi"
+    : isEditMode
+        ? "Cập nhật Đề xuất"
+        : "Gửi đi Thiết kế";
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Chỉnh sửa Đề xuất" : "Tạo Đề xuất Khuyến mãi"}>
+    <Modal isOpen={isOpen} onClose={onClose} title={formTitle}>
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700">Tên chương trình</label>
@@ -198,7 +212,10 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                              </button>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
                                 <div className="md:col-span-2">
-                                    <label className="text-xs font-medium text-gray-500">Tên dịch vụ / Combo</label>
+                                    <label className="text-xs font-medium text-gray-500">
+                                        Tên dịch vụ / Combo 
+                                        {service.isCombo && <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-1 rounded">GÓI COMBO</span>}
+                                    </label>
                                     <input type="text" value={service.name} onChange={e => handleSelectedServiceChange(service.id, 'name', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5" />
                                 </div>
                                 <div className="md:col-span-2">
@@ -221,7 +238,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
 
                 {comboSelectionIds.length >= 2 && (
                     <div className="my-3">
-                        <Button onClick={handleCreateCombo} className="w-full">
+                        <Button onClick={handleCreateCombo} className="w-full bg-purple-500 hover:bg-purple-600 text-white border-none">
                             + Gom thành Combo ({comboSelectionIds.length} dịch vụ đã chọn)
                         </Button>
                     </div>
@@ -238,7 +255,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
         </div>
         <div className="flex justify-end pt-4 border-t">
           <Button variant="secondary" onClick={onClose} className="mr-2">Hủy bỏ</Button>
-          <Button onClick={handleSubmit}>{isEditMode ? "Cập nhật Đề xuất" : "Gửi đi Thiết kế"}</Button>
+          <Button onClick={handleSubmit}>{submitButtonText}</Button>
         </div>
       </div>
     </Modal>

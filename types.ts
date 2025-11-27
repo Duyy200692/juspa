@@ -1,3 +1,4 @@
+
 export enum Role {
   Sales = 'Sales',
   Marketing = 'Marketing',
@@ -9,6 +10,8 @@ export interface User {
   id: string;
   name: string;
   role: Role;
+  username: string; // Tên đăng nhập
+  password?: string; // Mật khẩu
 }
 
 export interface Service {
@@ -28,8 +31,8 @@ export enum PromotionStatus {
 
 export interface PromotionService extends Service {
   discountPrice: number;
-  fullPrice: number; // The original price for this promotion item, copied from pricePerSession
-  isCombo?: boolean;
+  fullPrice: number; 
+  isCombo?: boolean; // Đánh dấu nếu đây là gói combo
 }
 
 export interface Promotion {
