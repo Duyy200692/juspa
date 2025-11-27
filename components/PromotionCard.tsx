@@ -8,6 +8,7 @@ interface PromotionCardProps {
   subtitle: string;
   services: PromotionService[];
   onEdit?: () => void;
+  onView?: () => void; // New prop for viewing details
   canEdit?: boolean;
 }
 
@@ -15,21 +16,28 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN').format(value);
 };
 
-const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, services, onEdit, canEdit }) => {
+const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, services, onEdit, onView, canEdit }) => {
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-pink-100 transform hover:scale-[1.01] transition-transform duration-300 relative group">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-pink-100 transform hover:scale-[1.01] transition-transform duration-300 relative group flex flex-col h-full">
       <div className="p-6 bg-gradient-to-br from-[#FDF7F8] to-white flex justify-between items-start">
         <div>
             <h3 className="font-serif text-2xl font-bold text-[#D97A7D]">{title}</h3>
             <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
         </div>
-        {canEdit && (
-            <Button variant="secondary" onClick={onEdit} className="text-xs px-2 py-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                Edit
-            </Button>
-        )}
+        <div className="flex gap-2">
+            {onView && (
+                <Button variant="secondary" onClick={onView} className="text-xs px-3 py-1">
+                    Xem chi tiết / Quy trình
+                </Button>
+            )}
+            {canEdit && (
+                <Button variant="secondary" onClick={onEdit} className="text-xs px-2 py-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    Edit
+                </Button>
+            )}
+        </div>
       </div>
-      <div className="px-6 py-4">
+      <div className="px-6 py-4 flex-grow">
         {/* Header Row - Hidden on mobile */}
         <div className="hidden sm:flex justify-between items-center text-xs font-bold text-gray-500 mb-3 px-4">
           <span className="w-2/5">SERVICE</span>

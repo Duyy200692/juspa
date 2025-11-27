@@ -1,3 +1,4 @@
+
 import { User, Service, Promotion, Role, PromotionStatus } from './types';
 
 // Default users representing the 4 roles
@@ -9,11 +10,12 @@ export const USERS: User[] = [
 ];
 
 // Helper to create mock pricing
-const createService = (id: string, name: string, desc: string, basePrice: number, type: 'single' | 'combo' = 'single'): Service => ({
+const createService = (id: string, name: string, desc: string, basePrice: number, note: string = '', type: 'single' | 'combo' = 'single'): Service => ({
     id,
     name,
     description: desc,
     type,
+    consultationNote: note,
     priceOriginal: basePrice,
     pricePromo: Math.round(basePrice * 0.5), // Mock 50% trial
     pricePackage5: basePrice * 5, // Mock buy 5 get 5 (paying for 5)
@@ -21,8 +23,8 @@ const createService = (id: string, name: string, desc: string, basePrice: number
 });
 
 const FACIAL_SERVICES: Service[] = [
-    createService('service-1', 'GeneOX Pro + HA Infusion', 'Sáng mịn bên ngoài, căng mọng từ bên trong', 4500000),
-    createService('service-2', 'Rf Full Face (Face + Eye)', 'Săn chắc da – trẻ hoá ánh nhìn', 3900000),
+    createService('service-1', 'GeneOX Pro + HA Infusion', 'Sáng mịn bên ngoài, căng mọng từ bên trong', 4500000, 'Bước 1: Tẩy trang & Rửa mặt\nBước 2: GeneoX 3in1 (Massage, Detox, Infusion)\nBước 3: Điện di tinh chất HA\nBước 4: Đắp mặt nạ khóa ẩm'),
+    createService('service-2', 'Rf Full Face (Face + Eye)', 'Săn chắc da – trẻ hoá ánh nhìn', 3900000, 'Bước 1: Làm sạch da\nBước 2: Bôi Gel dẫn nhiệt\nBước 3: Đi máy RF vùng mặt (20p)\nBước 4: Đi máy RF vùng mắt (10p)\nBước 5: Lau sạch & Dưỡng da'),
     createService('service-3', 'Crystal Skin Therapy', 'Thanh lọc – tái tạo – cấp ẩm đa tầng', 2500000),
     createService('service-4', 'Bliss & Balance 105’', '45’ Relaxing Hair Wash + 60 JU Signature Massage', 800000),
     createService('service-5', 'Oxy Boots', 'Công nghệ bơm oxy áp lực cao', 1800000),
@@ -30,7 +32,7 @@ const FACIAL_SERVICES: Service[] = [
 ];
 
 const HAIR_REMOVAL_SERVICES: Service[] = [
-    createService('hr-1', 'Mép trên', 'Triệt lông vùng mép trên', 750000),
+    createService('hr-1', 'Mép trên', 'Triệt lông vùng mép trên', 750000, '1. Cạo lông vùng mép\n2. Bôi Gel lạnh\n3. Bắn laser triệt lông\n4. Vệ sinh và bôi kem dưỡng'),
     createService('hr-2', 'Nách/Trán/Cằm', 'Triệt lông vùng nách, trán, hoặc cằm', 950000),
     createService('hr-3', '1/2 Tay', 'Triệt lông 1/2 cánh tay', 1200000),
     createService('hr-4', '1/2 Chân', 'Triệt lông 1/2 chân', 1500000),
@@ -40,10 +42,10 @@ const HAIR_REMOVAL_SERVICES: Service[] = [
     createService('hr-8', 'Full chân', 'Triệt lông toàn bộ chân', 2000000),
     createService('hr-9', 'Bikini/Tạo hình', 'Triệt lông và tạo hình vùng bikini', 1800000),
     createService('hr-10', 'Lưng', 'Triệt lông vùng lưng', 2400000),
-    createService('hr-11', 'Tay + Chân + Nách', 'Combo triệt lông tay, chân, và nách', 4200000, 'combo'),
-    createService('hr-12', 'Tay + Chân + Mặt', 'Combo triệt lông tay, chân, và mặt', 4800000, 'combo'),
-    createService('hr-13', 'Tay + Chân + Bi', 'Combo triệt lông tay, chân, và bikini', 4800000, 'combo'),
-    createService('hr-14', 'Toàn thân', 'Triệt lông toàn thân', 9600000, 'combo'),
+    createService('hr-11', 'Tay + Chân + Nách', 'Combo triệt lông tay, chân, và nách', 4200000, '', 'combo'),
+    createService('hr-12', 'Tay + Chân + Mặt', 'Combo triệt lông tay, chân, và mặt', 4800000, '', 'combo'),
+    createService('hr-13', 'Tay + Chân + Bi', 'Combo triệt lông tay, chân, và bikini', 4800000, '', 'combo'),
+    createService('hr-14', 'Toàn thân', 'Triệt lông toàn thân', 9600000, '', 'combo'),
 ];
 
 export const SERVICES: Service[] = [...FACIAL_SERVICES, ...HAIR_REMOVAL_SERVICES];

@@ -41,6 +41,14 @@ const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose
   const isManagement = currentUser.role === Role.Management;
   const canMarketingAct = isMarketing && proposal.status === PromotionStatus.PendingDesign;
   const canManagementAct = isManagement && proposal.status === PromotionStatus.PendingApproval;
+  
+  // Logic to determine which steps to show
+  // If proposal has a custom note (saved by Sale), show it. 
+  // Otherwise, fallback to generating from services (backward compatibility).
+  const consultationSteps = proposal.consultationNote || proposal.services
+    .filter(s => s.consultationNote)
+    .map(s => `• ${s.name}:\n${s.consultationNote}`)
+    .join('\n\n');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Proposal: ${proposal.name}`}>
@@ -59,6 +67,15 @@ const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose
                 ))}
             </ul>
         </DetailSection>
+
+        {consultationSteps && (
+            <div className="py-3 border-b border-gray-200">
+                <h4 className="text-sm font-semibold text-blue-600 mb-1">Quy trình & Các bước thực hiện (Consultation Steps)</h4>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap bg-blue-50 p-3 rounded-md border border-blue-100">
+                    {consultationSteps}
+                </div>
+            </div>
+        )}
 
         {proposal.salesNotes && <DetailSection title="Notes from Sales">{proposal.salesNotes}</DetailSection>}
         

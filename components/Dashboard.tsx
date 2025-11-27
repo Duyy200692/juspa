@@ -65,7 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-serif font-bold text-[#D97A7D] mb-4">Active Promotions</h2>
+        <h2 className="text-3xl font-serif font-bold text-[#D97A7D] mb-4">Active & Approved Promotions</h2>
         {activePromotions.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {activePromotions.map(promo => (
@@ -76,12 +76,13 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                 services={promo.services}
                 canEdit={isManagement}
                 onEdit={() => handleOpenEditForm(promo)}
+                onView={() => setSelectedProposal(promo)}
               />
             ))}
           </div>
         ) : (
           <div className="text-center py-10 bg-white rounded-lg shadow-sm">
-            <p className="text-gray-500">No active promotions at the moment.</p>
+            <p className="text-gray-500">Chưa có chương trình nào được duyệt.</p>
           </div>
         )}
       </div>
@@ -89,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
       {canViewProposals && (
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 sm:gap-0">
-            <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Promotion Proposals</h2>
+            <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Promotion Proposals History</h2>
             {loggedInUser.role === Role.Sales && (
               <Button onClick={handleOpenCreateForm} className="w-full sm:w-auto">
                 + Propose New Promotion
@@ -136,7 +137,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
               </table>
             </div>
             {proposalPromotions.length === 0 && (
-                <div className="text-center py-8 text-gray-500">Chưa có đề xuất nào.</div>
+                <div className="text-center py-8 text-gray-500">Chưa có đề xuất cũ.</div>
             )}
           </div>
         </div>

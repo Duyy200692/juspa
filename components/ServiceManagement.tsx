@@ -23,6 +23,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         name: '',
         description: '',
         type: 'single',
+        consultationNote: '',
         priceOriginal: 0,
         pricePromo: 0,
         pricePackage5: 0,
@@ -64,7 +65,8 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
             setNewService({ 
                 name: '', 
                 description: '', 
-                type: activeTab, 
+                type: activeTab,
+                consultationNote: '',
                 priceOriginal: 0, 
                 pricePromo: 0,
                 pricePackage5: 0,
@@ -119,7 +121,8 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                             <>
                                                 <td className="py-4 px-4 sticky left-0 bg-white z-10 shadow-sm md:shadow-none min-w-[200px]">
                                                     <input type="text" value={editedService.name} onChange={e => handleInputChange('name', e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-1 text-sm" />
-                                                    <textarea value={editedService.description} onChange={e => handleInputChange('description', e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-1 mt-1 text-xs" rows={2}></textarea>
+                                                    <textarea value={editedService.description} onChange={e => handleInputChange('description', e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-1 mt-1 text-xs" rows={2} placeholder="Mô tả"></textarea>
+                                                    <textarea value={editedService.consultationNote} onChange={e => handleInputChange('consultationNote', e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-1 mt-1 text-xs" rows={2} placeholder="Quy trình thực hiện..."></textarea>
                                                 </td>
                                                 <td className="py-4 px-4"><input type="number" value={editedService.priceOriginal} onChange={e => handleInputChange('priceOriginal', Number(e.target.value))} className="w-24 text-right border-gray-300 rounded-md shadow-sm p-1 text-sm" /></td>
                                                 <td className="py-4 px-4"><input type="number" value={editedService.pricePromo} onChange={e => handleInputChange('pricePromo', Number(e.target.value))} className="w-24 text-right border-gray-300 rounded-md shadow-sm p-1 text-sm" /></td>
@@ -136,7 +139,8 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                             <>
                                                 <td className="py-4 px-4 sticky left-0 bg-white z-10 shadow-sm md:shadow-none min-w-[200px]">
                                                     <p className="font-medium text-gray-900 whitespace-normal text-sm">{service.name}</p>
-                                                    <p className="text-xs text-gray-500 whitespace-normal line-clamp-2">{service.description}</p>
+                                                    <p className="text-xs text-gray-500 whitespace-normal line-clamp-1">{service.description}</p>
+                                                    {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
                                                 </td>
                                                 <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.priceOriginal)}</td>
                                                 <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo)}</td>
@@ -189,12 +193,16 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                         <label className="block text-xs font-medium text-gray-700">10 Tặng 15</label>
                         <input type="number" value={newService.pricePackage15} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
-                    <div className="md:col-span-2 lg:col-span-5">
+                    <div className="md:col-span-2 lg:col-span-3">
                          <label className="block text-xs font-medium text-gray-700">Mô tả</label>
-                         <textarea value={newService.description} onChange={e => handleNewServiceChange('description', e.target.value)} rows={1} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="Mô tả ngắn..."></textarea>
+                         <textarea value={newService.description} onChange={e => handleNewServiceChange('description', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="Mô tả ngắn..."></textarea>
+                    </div>
+                     <div className="md:col-span-2 lg:col-span-2">
+                         <label className="block text-xs font-medium text-gray-700">Quy trình / Các bước (Dành cho Lễ tân/MKT)</label>
+                         <textarea value={newService.consultationNote || ''} onChange={e => handleNewServiceChange('consultationNote', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="VD: Bước 1 tẩy trang..."></textarea>
                     </div>
                     <div className="lg:col-span-1">
-                        <Button type="submit" className="w-full text-sm">Thêm Mới</Button>
+                        <Button type="submit" className="w-full text-sm h-[60px]">Thêm Mới</Button>
                     </div>
                  </form>
             </div>

@@ -21,6 +21,7 @@ export interface Service {
   name: string;
   description: string;
   type: ServiceType;
+  consultationNote?: string; // Quy trình / Các bước thực hiện
   
   // New Pricing Structure
   priceOriginal: number;    // Giá bán gốc
@@ -54,4 +55,5 @@ export interface Promotion {
   managementNotes?: string;
   designUrl?: string;
   proposerId: string;
+  consultationNote?: string; // Custom consultation steps for this specific promotion
 }

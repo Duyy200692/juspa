@@ -50,21 +50,29 @@ const App: React.FC = () => {
     localStorage.setItem('promotions', JSON.stringify(promotions));
   }, [promotions]);
 
+  // Auto-seed services if missing (migration for new pricing structure)
+  useEffect(() => {
+     if (services.length < 20) {
+        setServices(DEFAULT_SERVICES);
+     }
+  }, []);
+
   // --- Computed Values ---
   const activePromotions = useMemo(() => {
     const now = new Date();
+    // LOGIC CHANGE: Show ALL Approved promotions that haven't ended yet (Current + Future)
+    // This allows Reception to see upcoming "Tháng 1", "Tháng 2" promotions
     return promotions.filter(p => 
       p.status === 'Approved' && 
-      new Date(p.startDate) <= now && 
       new Date(p.endDate) >= now
-    );
+    ).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
   }, [promotions]);
 
   const proposalPromotions = useMemo(() => {
     const now = new Date();
+    // Show proposals that are NOT approved, OR approved ones that have already ended (past history)
     return promotions.filter(p => 
         p.status !== 'Approved' || 
-        new Date(p.startDate) > now ||
         new Date(p.endDate) < now
     );
   }, [promotions]);

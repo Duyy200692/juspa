@@ -21,8 +21,15 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
   const [salesNotes, setSalesNotes] = useState('');
   const [comboSelectionIds, setComboSelectionIds] = useState<string[]>([]);
   
+  // Custom consultation note state
+  const [customConsultationNote, setCustomConsultationNote] = useState('');
+  const [isManualEditSteps, setIsManualEditSteps] = useState(false);
+  
   // State for bulk discount calculation
   const [bulkDiscountPercent, setBulkDiscountPercent] = useState<string>('');
+  
+  // Error state
+  const [error, setError] = useState<string>('');
 
   const isEditMode = !!promotionToEdit;
   const isEditingActive = isEditMode && promotionToEdit?.status === PromotionStatus.Approved && currentUser.role === Role.Management;
@@ -34,17 +41,29 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
     const totalDiscounted = selectedItems.reduce((acc, s) => acc + Number(s.discountPrice), 0);
     return { count: selectedItems.length, totalOriginal, totalDiscounted };
   }, [selectedServices, comboSelectionIds]);
+  
+  // Helper to generate default steps from services
+  const generateDefaultSteps = (servicesList: PromotionService[]) => {
+    return servicesList
+      .filter(s => s.consultationNote)
+      .map(s => `• ${s.name}:\n${s.consultationNote}`)
+      .join('\n\n');
+  };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN').format(val);
 
   useEffect(() => {
     if (isOpen) {
+      setError('');
       if (isEditMode && promotionToEdit) {
         setName(promotionToEdit.name);
         setStartDate(promotionToEdit.startDate);
         setEndDate(promotionToEdit.endDate);
         setSelectedServices(promotionToEdit.services);
         setSalesNotes(promotionToEdit.salesNotes || '');
+        // Load existing custom note or generate
+        setCustomConsultationNote(promotionToEdit.consultationNote || generateDefaultSteps(promotionToEdit.services));
+        setIsManualEditSteps(!!promotionToEdit.consultationNote);
       } else {
         // Reset form for create mode
         setName('');
@@ -52,11 +71,20 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
         setEndDate('');
         setSelectedServices([]);
         setSalesNotes('');
+        setCustomConsultationNote('');
+        setIsManualEditSteps(false);
       }
       setComboSelectionIds([]); // Always reset combo selection on open
       setBulkDiscountPercent('');
     }
   }, [promotionToEdit, isOpen, isEditMode]);
+
+  // Auto-update steps when services change (unless manually edited)
+  useEffect(() => {
+    if (!isManualEditSteps && !isEditMode) {
+        setCustomConsultationNote(generateDefaultSteps(selectedServices));
+    }
+  }, [selectedServices, isManualEditSteps, isEditMode]);
 
   const handleServiceToggle = (service: Service) => {
     const isSelected = selectedServices.some(s => s.id === service.id && !s.isCombo);
@@ -64,10 +92,11 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
       setSelectedServices(prev => prev.filter(s => s.id !== service.id));
     } else {
       // Use priceOriginal as the base fullPrice for the promotion
+      // Ensure prices are numbers to avoid undefined errors
       setSelectedServices(prev => [...prev, { 
           ...service, 
-          fullPrice: service.priceOriginal, 
-          discountPrice: service.priceOriginal 
+          fullPrice: Number(service.priceOriginal) || 0, 
+          discountPrice: Number(service.priceOriginal) || 0 
       }]);
     }
   };
@@ -86,8 +115,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
           const newPrice = Math.round((fullPrice - discountAmt) / 1000) * 1000; // Round to nearest 1000
           handleSelectedServiceChange(id, 'discountPrice', newPrice);
       } else if (percentStr === '') {
-          // If empty, maybe reset to full price? or keep as is? Let's just do nothing or set to full
-          // handleSelectedServiceChange(id, 'discountPrice', fullPrice);
+          // If empty, reset to full price optional, currently does nothing to keep flexibility
       }
   };
   
@@ -137,12 +165,19 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
     const comboName = `Gói Combo Mới`;
     const comboDescription = `Bao gồm: ${servicesToCombine.map(s => s.name).join(', ')}.`;
     const comboFullPrice = servicesToCombine.reduce((total, s) => total + Number(s.fullPrice), 0);
+    
+    // Combine consultation notes
+    const comboNotes = servicesToCombine
+        .map(s => s.consultationNote ? `${s.name}: ${s.consultationNote}` : '')
+        .filter(Boolean)
+        .join('\n');
 
     const newCombo: PromotionService = {
         id: `combo-${Date.now()}`,
         name: comboName,
         description: comboDescription,
         type: 'combo',
+        consultationNote: comboNotes,
         priceOriginal: comboFullPrice,
         pricePromo: 0,
         pricePackage5: 0,
@@ -183,9 +218,16 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
       setBulkDiscountPercent('');
   };
 
+  const handleResetConsultationSteps = () => {
+      const defaultSteps = generateDefaultSteps(selectedServices);
+      setCustomConsultationNote(defaultSteps);
+      setIsManualEditSteps(false);
+  };
+
   const handleSubmit = () => {
+    // Basic validation
     if (!name || !startDate || !endDate || selectedServices.length === 0) {
-      alert("Vui lòng điền đầy đủ thông tin bắt buộc và chọn ít nhất một dịch vụ.");
+      setError("Vui lòng điền tên, ngày và chọn ít nhất một dịch vụ.");
       return;
     }
 
@@ -195,25 +237,26 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
         return service;
     });
 
-    if (isEditMode) {
-      const updatedProposal: Promotion = {
-        ...promotionToEdit,
+    const commonData = {
         name,
         startDate,
         endDate,
         services: finalServices,
         salesNotes,
+        consultationNote: customConsultationNote, // Save the edited steps
+    };
+
+    if (isEditMode) {
+      const updatedProposal: Promotion = {
+        ...promotionToEdit,
+        ...commonData,
       };
       onSubmit(updatedProposal);
     } else {
       const newProposal: Omit<Promotion, 'id'> = {
-        name,
-        startDate,
-        endDate,
-        services: finalServices,
+        ...commonData,
         status: PromotionStatus.PendingDesign,
         proposerId: currentUser.id,
-        salesNotes,
       };
       onSubmit(newProposal);
     }
@@ -268,8 +311,8 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
             <div>
                 <h3 className="text-md font-medium text-gray-800 mb-2">2. Tùy chỉnh chương trình</h3>
                 
-                {/* Bulk Actions Toolbar - Redesigned */}
-                <div className="bg-white p-4 rounded-lg border-2 border-dashed border-[#E5989B] mb-4 flex flex-col gap-3">
+                {/* Bulk Actions Toolbar */}
+                <div className="bg-pink-50 p-4 rounded-lg border border-[#E5989B] mb-4 flex flex-col gap-3 shadow-sm">
                     <div className="flex justify-between items-center">
                         <span className="font-bold text-[#D97A7D] flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -294,11 +337,11 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                                     placeholder="VD: 10" 
                                     value={bulkDiscountPercent}
                                     onChange={(e) => setBulkDiscountPercent(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-l-md p-2 text-sm focus:ring-[#D97A7D] focus:border-[#D97A7D]"
+                                    className="w-full border border-gray-300 rounded-l-md p-2 text-sm focus:ring-[#D97A7D] focus:border-[#D97A7D] bg-white"
                                 />
                                 <button 
                                     onClick={handleApplyBulkDiscount}
-                                    className="bg-[#E5989B] text-white px-4 rounded-r-md text-sm font-medium hover:bg-[#D97A7D] disabled:opacity-50 whitespace-nowrap"
+                                    className="bg-[#E5989B] text-white px-4 rounded-r-md text-sm font-medium hover:bg-[#D97A7D] disabled:opacity-50 whitespace-nowrap shadow-sm"
                                     disabled={comboSelectionIds.length === 0}
                                 >
                                     Áp dụng
@@ -312,7 +355,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                             <button 
                                 onClick={handleCreateCombo}
                                 disabled={comboSelectionIds.length < 2}
-                                className="w-full bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                className="w-full bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
                             >
                                 Gom thành Combo
                             </button>
@@ -321,7 +364,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                     
                     {/* Bulk Summary Info */}
                     {bulkSummary.count > 0 && (
-                        <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 flex gap-4">
+                        <div className="text-xs text-gray-600 bg-white p-2 rounded border border-pink-100 flex gap-4">
                             <span>Tổng gốc: <b>{formatCurrency(bulkSummary.totalOriginal)}</b></span>
                             <span>&rarr;</span>
                             <span>Sau giảm: <b className="text-[#D97A7D]">{formatCurrency(bulkSummary.totalDiscounted)}</b></span>
@@ -329,7 +372,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                     )}
 
                     {comboSelectionIds.length === 0 && selectedServices.length > 0 && (
-                        <p className="text-[10px] text-red-400 italic">* Vui lòng tick chọn vào các ô vuông ở góc mỗi dịch vụ bên dưới để sử dụng công cụ này.</p>
+                        <p className="text-[10px] text-red-500 italic font-medium">* Vui lòng tick chọn vào các ô vuông ở góc mỗi dịch vụ bên dưới để sử dụng công cụ này.</p>
                     )}
                 </div>
 
@@ -340,7 +383,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                             : 0;
 
                         return (
-                        <div key={service.id} className={`bg-gray-50 p-4 pt-8 border rounded-lg relative transition-colors ${comboSelectionIds.includes(service.id) ? 'border-purple-300 bg-purple-50/30' : ''}`}>
+                        <div key={service.id} className={`bg-gray-50 p-4 pt-8 border rounded-lg relative transition-colors ${comboSelectionIds.includes(service.id) ? 'border-pink-300 bg-pink-50/50' : ''}`}>
                              {!service.isCombo && (
                                 <input
                                     type="checkbox"
@@ -371,18 +414,16 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                                 
                                 {/* Discount Pricing Row with % Calculation */}
                                 <div className="flex gap-2">
-                                    <div className="w-1/3">
+                                    <div className="w-1/3 relative">
                                         <label className="text-xs font-medium text-gray-500">% Giảm</label>
-                                        <div className="relative">
-                                            <input 
-                                                type="number" 
-                                                placeholder="0"
-                                                value={calculatedPercent}
-                                                onChange={(e) => handlePercentChange(service.id, service.fullPrice, e.target.value)}
-                                                className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 text-center focus:ring-[#E5989B] focus:border-[#E5989B]"
-                                            />
-                                            <span className="absolute right-6 top-1.5 text-xs text-transparent pointer-events-none">%</span>
-                                        </div>
+                                        <input 
+                                            type="number" 
+                                            placeholder="0"
+                                            value={calculatedPercent}
+                                            onChange={(e) => handlePercentChange(service.id, service.fullPrice, e.target.value)}
+                                            className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 pl-2 pr-6 text-center focus:ring-[#E5989B] focus:border-[#E5989B]"
+                                        />
+                                        <span className="absolute right-2 top-7 text-xs text-gray-500 pointer-events-none font-bold">%</span>
                                     </div>
                                     <div className="w-2/3">
                                         <label className="text-xs font-medium text-gray-500">Giá khuyến mãi</label>
@@ -400,19 +441,54 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                      {selectedServices.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Chưa có dịch vụ nào được chọn. Hãy chọn một dịch vụ có sẵn hoặc thêm dịch vụ tùy chỉnh.</p>}
                 </div>
                 
-                 <Button variant="secondary" onClick={handleAddCustomService} className="mt-3 w-full text-center">
+                 <Button variant="secondary" onClick={handleAddCustomService} className="mt-3 w-full text-center" type="button">
                     + Thêm dịch vụ tùy chỉnh
                 </Button>
             </div>
+        </div>
+        
+        {/* NEW: Editable Consultation Steps */}
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-bold text-blue-800">Quy trình thực hiện (Sale Note)</label>
+                <button 
+                    type="button"
+                    onClick={handleResetConsultationSteps} 
+                    className="text-[10px] bg-white border border-blue-200 px-2 py-1 rounded text-blue-600 hover:bg-blue-100"
+                    title="Khôi phục lại quy trình chuẩn từ các dịch vụ đã chọn"
+                >
+                    🔄 Lấy lại nội dung gốc
+                </button>
+            </div>
+            
+            <textarea 
+                value={customConsultationNote}
+                onChange={(e) => {
+                    setCustomConsultationNote(e.target.value);
+                    setIsManualEditSteps(true);
+                }}
+                rows={5}
+                className="w-full text-xs text-blue-800 whitespace-pre-wrap bg-white p-2 rounded border border-blue-200 focus:ring-blue-300 focus:border-blue-300"
+                placeholder="Quy trình thực hiện sẽ tự động hiện ở đây. Bạn có thể chỉnh sửa lại cho phù hợp..."
+            />
+            <p className="text-[10px] text-blue-400 mt-1 italic">Sale có thể chỉnh sửa các bước thực hiện tại đây. Thông tin này sẽ được Lễ tân và Marketing sử dụng.</p>
         </div>
 
         <div>
             <label className="block text-sm font-medium text-gray-700">Ghi chú cho Marketing</label>
             <textarea value={salesNotes} onChange={e => setSalesNotes(e.target.value)} rows={3} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" placeholder="VD: Tone màu chủ đạo, thông điệp chính..."></textarea>
         </div>
+        
+        {/* Error Message Display */}
+        {error && (
+            <div className="bg-red-50 text-red-600 p-2 rounded text-sm text-center border border-red-200">
+                {error}
+            </div>
+        )}
+
         <div className="flex justify-end pt-4 border-t">
-          <Button variant="secondary" onClick={onClose} className="mr-2">Hủy bỏ</Button>
-          <Button onClick={handleSubmit}>{submitButtonText}</Button>
+          <Button variant="secondary" onClick={onClose} className="mr-2" type="button">Hủy bỏ</Button>
+          <Button onClick={handleSubmit} type="button">{submitButtonText}</Button>
         </div>
       </div>
     </Modal>
