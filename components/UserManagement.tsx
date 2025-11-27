@@ -15,14 +15,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onAddUser, onUpd
     name: '',
     username: '',
     password: '',
-    role: Role.Sales,
+    role: Role.Product,
   });
 
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (newUser.name && newUser.username && newUser.password) {
       onAddUser(newUser);
-      setNewUser({ name: '', username: '', password: '', role: Role.Sales });
+      setNewUser({ name: '', username: '', password: '', role: Role.Product });
     } else {
         alert("Vui lòng điền đầy đủ thông tin!");
     }
@@ -51,7 +51,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onAddUser, onUpd
                     <td className="py-4 px-6 text-gray-600">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold 
                           ${user.role === Role.Management ? 'bg-purple-100 text-purple-800' : 
-                            user.role === Role.Sales ? 'bg-green-100 text-green-800' :
+                            user.role === Role.Product ? 'bg-green-100 text-green-800' :
                             user.role === Role.Marketing ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                             {user.role}
                         </span>

@@ -1,6 +1,6 @@
 
 export enum Role {
-  Sales = 'Sales',
+  Product = 'Product',
   Marketing = 'Marketing',
   Management = 'Management',
   Reception = 'Reception',

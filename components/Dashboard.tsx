@@ -30,7 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
   const [selectedProposal, setSelectedProposal] = useState<Promotion | null>(null);
   const [editingProposal, setEditingProposal] = useState<Promotion | null>(null);
 
-  const canViewProposals = [Role.Sales, Role.Marketing, Role.Management].includes(loggedInUser.role);
+  const canViewProposals = [Role.Product, Role.Marketing, Role.Management].includes(loggedInUser.role);
   const isManagement = loggedInUser.role === Role.Management;
 
   const handleOpenCreateForm = () => {
@@ -91,7 +91,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
         <div>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 sm:gap-0">
             <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Promotion Proposals History</h2>
-            {loggedInUser.role === Role.Sales && (
+            {loggedInUser.role === Role.Product && (
               <Button onClick={handleOpenCreateForm} className="w-full sm:w-auto">
                 + Propose New Promotion
               </Button>
@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {proposalPromotions.map(promo => {
-                    const canEdit = loggedInUser.role === Role.Sales && promo.proposerId === loggedInUser.id && promo.status === PromotionStatus.PendingDesign;
+                    const canEdit = loggedInUser.role === Role.Product && promo.proposerId === loggedInUser.id && promo.status === PromotionStatus.PendingDesign;
                     return (
                       <tr key={promo.id} className="hover:bg-gray-50">
                         <td className="py-4 px-6 font-medium text-gray-900">{promo.name}</td>

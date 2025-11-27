@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { Service, ServiceType } from '../types';
 import Button from './shared/Button';
+import EditServiceModal from './EditServiceModal'; // Import the new modal
 
 interface ServiceManagementProps {
     services: Service[];
@@ -16,8 +16,7 @@ const formatCurrency = (value: number) => {
 
 const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddService, onUpdateService, onDeleteService }) => {
     const [activeTab, setActiveTab] = useState<ServiceType>('single');
-    const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
-    const [editedService, setEditedService] = useState<Partial<Service>>({});
+    const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null); // New state for modal
     
     const [newService, setNewService] = useState<Omit<Service, 'id'>>({
         name: '',
@@ -32,27 +31,6 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
 
     // Filter services based on active tab
     const displayedServices = services.filter(s => s.type === activeTab);
-
-    const handleEditClick = (service: Service) => {
-        setEditingServiceId(service.id);
-        setEditedService(service);
-    };
-
-    const handleCancelEdit = () => {
-        setEditingServiceId(null);
-        setEditedService({});
-    };
-
-    const handleSaveEdit = () => {
-        if (editingServiceId && editedService) {
-            onUpdateService(editedService as Service);
-            handleCancelEdit();
-        }
-    };
-
-    const handleInputChange = (field: keyof Service, value: string | number) => {
-        setEditedService(prev => ({ ...prev, [field]: value }));
-    };
     
     const handleNewServiceChange = (field: keyof Omit<Service, 'id'>, value: string | number) => {
         setNewService(prev => ({ ...prev, [field]: value }));
@@ -75,6 +53,11 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         } else {
             alert("Vui lòng nhập tên và giá gốc.");
         }
+    };
+    
+    const handleModalSave = (updatedService: Service) => {
+        onUpdateService(updatedService);
+        setServiceToEdit(null); // Close the modal
     };
 
     const TabButton = ({ type, label }: { type: ServiceType; label: string }) => (
@@ -106,7 +89,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                         <table className="min-w-full whitespace-nowrap">
                             <thead className="bg-[#FDF7F8]">
                                 <tr>
-                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-[#FDF7F8] z-10">Tên Dịch vụ</th>
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-[#FDF7F8] z-10 min-w-[250px]">Tên Dịch vụ</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Giá bán gốc</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Giá KM/Trial</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Giảm 5 Tặng 5</th>
@@ -117,43 +100,22 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {displayedServices.map(service => (
                                     <tr key={service.id}>
-                                        {editingServiceId === service.id ? (
-                                            <>
-                                                <td className="py-4 px-4 sticky left-0 bg-white z-10 shadow-sm md:shadow-none min-w-[200px]">
-                                                    <input type="text" value={editedService.name} onChange={e => handleInputChange('name', e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-1 text-sm" />
-                                                    <textarea value={editedService.description} onChange={e => handleInputChange('description', e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-1 mt-1 text-xs" rows={2} placeholder="Mô tả"></textarea>
-                                                    <textarea value={editedService.consultationNote} onChange={e => handleInputChange('consultationNote', e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-1 mt-1 text-xs" rows={2} placeholder="Quy trình thực hiện..."></textarea>
-                                                </td>
-                                                <td className="py-4 px-4"><input type="number" value={editedService.priceOriginal} onChange={e => handleInputChange('priceOriginal', Number(e.target.value))} className="w-24 text-right border-gray-300 rounded-md shadow-sm p-1 text-sm" /></td>
-                                                <td className="py-4 px-4"><input type="number" value={editedService.pricePromo} onChange={e => handleInputChange('pricePromo', Number(e.target.value))} className="w-24 text-right border-gray-300 rounded-md shadow-sm p-1 text-sm" /></td>
-                                                <td className="py-4 px-4"><input type="number" value={editedService.pricePackage5} onChange={e => handleInputChange('pricePackage5', Number(e.target.value))} className="w-24 text-right border-gray-300 rounded-md shadow-sm p-1 text-sm" /></td>
-                                                <td className="py-4 px-4"><input type="number" value={editedService.pricePackage15} onChange={e => handleInputChange('pricePackage15', Number(e.target.value))} className="w-24 text-right border-gray-300 rounded-md shadow-sm p-1 text-sm" /></td>
-                                                <td className="py-4 px-4 text-center">
-                                                    <div className="flex flex-col gap-1 items-center">
-                                                        <Button onClick={handleSaveEdit} className="text-[10px] py-1 px-2 w-full">Lưu</Button>
-                                                        <Button variant="secondary" onClick={handleCancelEdit} className="text-[10px] py-1 px-2 w-full">Hủy</Button>
-                                                    </div>
-                                                </td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="py-4 px-4 sticky left-0 bg-white z-10 shadow-sm md:shadow-none min-w-[200px]">
-                                                    <p className="font-medium text-gray-900 whitespace-normal text-sm">{service.name}</p>
-                                                    <p className="text-xs text-gray-500 whitespace-normal line-clamp-1">{service.description}</p>
-                                                    {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
-                                                </td>
-                                                <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.priceOriginal)}</td>
-                                                <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo)}</td>
-                                                <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage5)}</td>
-                                                <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage15)}</td>
-                                                <td className="py-4 px-4 text-center">
-                                                     <div className="flex flex-col gap-1 items-center">
-                                                        <Button variant="secondary" onClick={() => handleEditClick(service)} className="text-[10px] py-1 px-2 w-full">Sửa</Button>
-                                                        <Button variant="danger" onClick={() => window.confirm(`Xóa dịch vụ ${service.name}?`) && onDeleteService(service.id)} className="text-[10px] py-1 px-2 w-full">Xóa</Button>
-                                                    </div>
-                                                </td>
-                                            </>
-                                        )}
+                                        {/* Simplified view-only row */}
+                                        <td className="py-4 px-4 sticky left-0 bg-white z-10 shadow-sm md:shadow-none">
+                                            <p className="font-medium text-gray-900 whitespace-normal text-sm">{service.name}</p>
+                                            <p className="text-xs text-gray-500 whitespace-normal line-clamp-1">{service.description}</p>
+                                            {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
+                                        </td>
+                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.priceOriginal)}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo)}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage5)}</td>
+                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage15)}</td>
+                                        <td className="py-4 px-4 text-center">
+                                             <div className="flex flex-col gap-1 items-center">
+                                                <Button variant="secondary" onClick={() => setServiceToEdit(service)} className="text-[10px] py-1 px-2 w-full">Sửa</Button>
+                                                <Button variant="danger" onClick={() => window.confirm(`Xóa dịch vụ ${service.name}?`) && onDeleteService(service.id)} className="text-[10px] py-1 px-2 w-full">Xóa</Button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))}
                                 {displayedServices.length === 0 && (
@@ -206,6 +168,14 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                     </div>
                  </form>
             </div>
+            
+            {/* Render the modal */}
+            <EditServiceModal
+                isOpen={!!serviceToEdit}
+                onClose={() => setServiceToEdit(null)}
+                service={serviceToEdit}
+                onUpdateService={handleModalSave}
+            />
         </div>
     );
 };
