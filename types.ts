@@ -14,12 +14,19 @@ export interface User {
   password?: string; // Mật khẩu
 }
 
+export type ServiceType = 'single' | 'combo';
+
 export interface Service {
   id: string;
   name: string;
   description: string;
-  pricePerSession: number;
-  priceFullPackage: number;
+  type: ServiceType;
+  
+  // New Pricing Structure
+  priceOriginal: number;    // Giá bán gốc
+  pricePromo: number;       // Giá KM/Trial
+  pricePackage5: number;    // Giảm-5 tặng 5 (Price for this package)
+  pricePackage15: number;   // 10 tặng 15 (Price for this package)
 }
 
 export enum PromotionStatus {
@@ -30,9 +37,9 @@ export enum PromotionStatus {
 }
 
 export interface PromotionService extends Service {
-  discountPrice: number;
-  fullPrice: number; 
-  isCombo?: boolean; // Đánh dấu nếu đây là gói combo
+  discountPrice: number; // The price offered in the specific promotion
+  fullPrice: number;     // Snapshot of priceOriginal at the time of promotion
+  isCombo?: boolean;     // Ad-hoc combo created within a promotion
 }
 
 export interface Promotion {

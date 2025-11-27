@@ -39,6 +39,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, services
         
         <ul className="space-y-4 sm:space-y-2">
           {services.map(service => {
+            // Logic change: If fullPrice is 0 (unlikely but safe), avoid NaN
             const discountPercentage = service.fullPrice > 0 ? Math.round(((service.fullPrice - service.discountPrice) / service.fullPrice) * 100) : 0;
             return (
               <li key={service.id} className="border-t border-dashed border-pink-200 py-3 flex flex-col sm:flex-row sm:items-center px-2 sm:px-4">

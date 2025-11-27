@@ -11,16 +11,44 @@ import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEF
 
 type View = 'dashboard' | 'services' | 'users';
 
+// Helper to load from local storage
+const loadFromStorage = <T,>(key: string, defaultVal: T): T => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultVal;
+  } catch (e) {
+    console.error(`Error loading ${key} from storage`, e);
+    return defaultVal;
+  }
+};
+
 const App: React.FC = () => {
-  // --- Local State for UI ---
-  const [showLanding, setShowLanding] = useState(true); // New state for Landing Page
+  // --- State Initialization with LocalStorage ---
+  const [showLanding, setShowLanding] = useState(true);
+  
+  // Initialize state directly from LocalStorage to avoid flash of default content
+  const [users, setUsers] = useState<User[]>(() => loadFromStorage('users', DEFAULT_USERS));
+  const [services, setServices] = useState<Service[]>(() => loadFromStorage('services', DEFAULT_SERVICES));
+  const [promotions, setPromotions] = useState<Promotion[]>(() => loadFromStorage('promotions', DEFAULT_PROMOTIONS));
+  
+  // Session state (not persisted in this example, or could be if desired)
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
   const [view, setView] = useState<View>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string>('');
+
+  // --- Persistence Effects ---
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem('services', JSON.stringify(services));
+  }, [services]);
+
+  useEffect(() => {
+    localStorage.setItem('promotions', JSON.stringify(promotions));
+  }, [promotions]);
 
   // --- Computed Values ---
   const activePromotions = useMemo(() => {
@@ -33,7 +61,6 @@ const App: React.FC = () => {
   }, [promotions]);
 
   const proposalPromotions = useMemo(() => {
-    // Show promotions that are NOT active (Pending, Rejected, or Future Approved)
     const now = new Date();
     return promotions.filter(p => 
         p.status !== 'Approved' || 
@@ -42,22 +69,6 @@ const App: React.FC = () => {
     );
   }, [promotions]);
 
-  // --- Mock Data Fetching ---
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      // Simulate network delay and use default data
-      setTimeout(() => {
-        setUsers(DEFAULT_USERS);
-        setServices(DEFAULT_SERVICES);
-        setPromotions(DEFAULT_PROMOTIONS);
-        setIsLoading(false);
-      }, 1000);
-    };
-
-    fetchData();
-  }, []);
-
   // --- Auth Handlers ---
   const handleLogin = (username: string, password: string) => {
       const user = users.find(u => u.username === username && u.password === password);
@@ -65,7 +76,7 @@ const App: React.FC = () => {
           setLoggedInUser(user);
           setLoginError('');
       } else {
-          // Allow login for seed users even if password logic is simple
+          // Fallback for seed users
           const seedUser = users.find(u => u.username === username);
           if (seedUser) {
              setLoggedInUser(seedUser);
@@ -79,25 +90,34 @@ const App: React.FC = () => {
   const handleLogout = () => {
       setLoggedInUser(null);
       setView('dashboard');
-      setShowLanding(true); // Return to landing page on logout
+      setShowLanding(true);
   };
 
   const handleEnterSystem = () => {
-      setShowLanding(false); // Hide Landing Page, Show Login
+      setShowLanding(false);
+  };
+
+  // --- Role Switching Logic ---
+  const handleSwitchRole = (newRole: Role) => {
+      const targetUser = users.find(u => u.role === newRole);
+      if (targetUser) {
+          setLoggedInUser(targetUser);
+          if (newRole !== Role.Management && view === 'users') {
+              setView('dashboard');
+          }
+      }
   };
 
   // --- User Profile Updates ---
   const handleUpdateUserName = (newName: string) => {
     if (loggedInUser) {
         const updatedUser = { ...loggedInUser, name: newName };
-        // 1. Update the current session
         setLoggedInUser(updatedUser);
-        // 2. Update the main users list so it persists in the mock DB
         setUsers(prev => prev.map(u => u.id === loggedInUser.id ? updatedUser : u));
     }
   };
 
-  // --- Mock Actions: Users ---
+  // --- Actions: Users ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newUser = { ...newUserData, id: `user-${Date.now()}` };
     setUsers(prev => [...prev, newUser]);
@@ -105,7 +125,6 @@ const App: React.FC = () => {
 
   const updateUser = async (updatedUser: User) => {
       setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-      // If the currently logged-in user is updated by an admin (or themselves), update session
       if (loggedInUser && loggedInUser.id === updatedUser.id) {
           setLoggedInUser(updatedUser);
       }
@@ -115,7 +134,7 @@ const App: React.FC = () => {
       setUsers(prev => prev.filter(u => u.id !== userId));
   };
 
-  // --- Mock Actions: Promotions ---
+  // --- Actions: Promotions ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
     const newPromotion = { ...newPromotionData, id: `promo-${Date.now()}` };
     setPromotions(prev => [...prev, newPromotion]);
@@ -125,7 +144,7 @@ const App: React.FC = () => {
     setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
   };
 
-  // --- Mock Actions: Services ---
+  // --- Actions: Services ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
     const newService = { ...newServiceData, id: `service-${Date.now()}` };
     setServices(prev => [...prev, newService]);
@@ -141,37 +160,27 @@ const App: React.FC = () => {
 
   // --- Main Render Flow ---
 
-  // 1. Loading State
   if (isLoading) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">
-              <div className="text-center">
-                  <svg className="animate-spin h-10 w-10 text-[#E5989B] mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <p className="font-serif text-xl">Đang tải dữ liệu...</p>
-              </div>
+              <p className="font-serif text-xl">Đang tải dữ liệu...</p>
           </div>
       );
   }
 
-  // 2. Landing Page
   if (showLanding) {
       return <LandingPage onEnter={handleEnterSystem} />;
   }
 
-  // 3. Login Screen
   if (!loggedInUser) {
     return <LoginScreen onLogin={handleLogin} error={loginError} />;
   }
 
-  // 4. Main App
   return (
     <div className="min-h-screen bg-[#FDF7F8] text-[#5C3A3A]">
       <Header
         currentUser={loggedInUser}
-        onSwitchRole={() => {}} // Disabled role switcher in auth mode
+        onSwitchRole={handleSwitchRole} 
         onUpdateUserName={handleUpdateUserName}
         currentView={view}
         onViewChange={setView}
