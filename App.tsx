@@ -86,6 +86,17 @@ const App: React.FC = () => {
       setShowLanding(false); // Hide Landing Page, Show Login
   };
 
+  // --- User Profile Updates ---
+  const handleUpdateUserName = (newName: string) => {
+    if (loggedInUser) {
+        const updatedUser = { ...loggedInUser, name: newName };
+        // 1. Update the current session
+        setLoggedInUser(updatedUser);
+        // 2. Update the main users list so it persists in the mock DB
+        setUsers(prev => prev.map(u => u.id === loggedInUser.id ? updatedUser : u));
+    }
+  };
+
   // --- Mock Actions: Users ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newUser = { ...newUserData, id: `user-${Date.now()}` };
@@ -94,6 +105,10 @@ const App: React.FC = () => {
 
   const updateUser = async (updatedUser: User) => {
       setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+      // If the currently logged-in user is updated by an admin (or themselves), update session
+      if (loggedInUser && loggedInUser.id === updatedUser.id) {
+          setLoggedInUser(updatedUser);
+      }
   };
 
   const deleteUser = async (userId: string) => {
@@ -157,7 +172,7 @@ const App: React.FC = () => {
       <Header
         currentUser={loggedInUser}
         onSwitchRole={() => {}} // Disabled role switcher in auth mode
-        onUpdateUserName={() => {}} // Disabled local update in auth mode
+        onUpdateUserName={handleUpdateUserName}
         currentView={view}
         onViewChange={setView}
         onLogout={handleLogout}
