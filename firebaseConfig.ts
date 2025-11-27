@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 
 // --- QUAN TRỌNG: THAY THẾ CÁC GIÁ TRỊ DƯỚI ĐÂY BẰNG THÔNG TIN TỪ FIREBASE CONSOLE CỦA BẠN ---
 const firebaseConfig = {
-  apiKey: "AIzaSyAS9G31URd2WN3qzOy74IMr8qH0VItjgB0",
+  apiKey: "AIzaSyAS9G31URd2WN3qzOy74IMr8qH0VItjgB00",
   authDomain: "juspa-manager.firebaseapp.com",
   projectId: "juspa-manager",
   storageBucket: "juspa-manager.firebasestorage.app",
