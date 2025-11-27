@@ -88,49 +88,56 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
 
       {canViewProposals && (
         <div>
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 sm:gap-0">
             <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Promotion Proposals</h2>
             {loggedInUser.role === Role.Sales && (
-              <Button onClick={handleOpenCreateForm}>
+              <Button onClick={handleOpenCreateForm} className="w-full sm:w-auto">
                 + Propose New Promotion
               </Button>
             )}
           </div>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <table className="min-w-full">
-              <thead className="bg-[#FDF7F8]">
-                <tr>
-                  <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tháng</th>
-                  <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                  <th className="py-3 px-6 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="py-3 px-6 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {proposalPromotions.map(promo => {
-                  const canEdit = loggedInUser.role === Role.Sales && promo.proposerId === loggedInUser.id && promo.status === PromotionStatus.PendingDesign;
-                  return (
-                    <tr key={promo.id} className="hover:bg-gray-50">
-                      <td className="py-4 px-6 whitespace-nowrap font-medium text-gray-900">{promo.name}</td>
-                      <td className="py-4 px-6 whitespace-nowrap text-sm text-gray-500">{getMonthFromDate(promo.startDate)}</td>
-                      <td className="py-4 px-6 whitespace-nowrap text-sm text-gray-500">{promo.startDate} - {promo.endDate}</td>
-                      <td className="py-4 px-6 whitespace-nowrap text-center">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(promo.status)}`}>
-                              {promo.status}
-                          </span>
-                      </td>
-                      <td className="py-4 px-6 whitespace-nowrap text-right space-x-2">
-                        {canEdit && (
-                          <Button variant="secondary" onClick={() => handleOpenEditForm(promo)}>Edit</Button>
-                        )}
-                        <Button variant="secondary" onClick={() => setSelectedProposal(promo)}>View Details</Button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          
+          {/* Added overflow-x-auto for horizontal scrolling on mobile */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
+            <div className="overflow-x-auto">
+              <table className="min-w-full whitespace-nowrap">
+                <thead className="bg-[#FDF7F8]">
+                  <tr>
+                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tháng</th>
+                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                    <th className="py-3 px-6 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="py-3 px-6 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {proposalPromotions.map(promo => {
+                    const canEdit = loggedInUser.role === Role.Sales && promo.proposerId === loggedInUser.id && promo.status === PromotionStatus.PendingDesign;
+                    return (
+                      <tr key={promo.id} className="hover:bg-gray-50">
+                        <td className="py-4 px-6 font-medium text-gray-900">{promo.name}</td>
+                        <td className="py-4 px-6 text-sm text-gray-500">{getMonthFromDate(promo.startDate)}</td>
+                        <td className="py-4 px-6 text-sm text-gray-500">{promo.startDate} - {promo.endDate}</td>
+                        <td className="py-4 px-6 text-center">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(promo.status)}`}>
+                                {promo.status}
+                            </span>
+                        </td>
+                        <td className="py-4 px-6 text-right space-x-2">
+                          {canEdit && (
+                            <Button variant="secondary" onClick={() => handleOpenEditForm(promo)}>Edit</Button>
+                          )}
+                          <Button variant="secondary" onClick={() => setSelectedProposal(promo)}>View</Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {proposalPromotions.length === 0 && (
+                <div className="text-center py-8 text-gray-500">Chưa có đề xuất nào.</div>
+            )}
           </div>
         </div>
       )}

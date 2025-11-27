@@ -7,8 +7,9 @@ interface HeaderProps {
   currentUser: User;
   onSwitchRole: (role: Role) => void;
   onUpdateUserName: (newName: string) => void;
-  currentView: 'dashboard' | 'services';
-  onViewChange: (view: 'dashboard' | 'services') => void;
+  currentView: 'dashboard' | 'services' | 'users';
+  onViewChange: (view: 'dashboard' | 'services' | 'users') => void;
+  onLogout: () => void;
 }
 
 const JuSpaLogo: React.FC = () => (
@@ -21,7 +22,7 @@ const JuSpaLogo: React.FC = () => (
     </div>
 );
 
-const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUserName, currentView, onViewChange }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUserName, currentView, onViewChange, onLogout }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
   const navButtonStyle = "px-3 py-1 rounded-md text-sm font-medium transition-colors";
@@ -48,6 +49,14 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUser
                   >
                       Services
                   </button>
+                  {currentUser.role === Role.Management && (
+                    <button 
+                        onClick={() => onViewChange('users')}
+                        className={`${navButtonStyle} ${currentView === 'users' ? activeStyle : inactiveStyle}`}
+                    >
+                        Users
+                    </button>
+                  )}
               </div>
           </div>
         </div>
@@ -81,7 +90,11 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUser
                    </svg>
                 </div>
              </div>
-             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#E5989B] to-[#FCD5CE] flex items-center justify-center text-white font-bold text-lg shadow-sm">
+             <div 
+               className="h-10 w-10 rounded-full bg-gradient-to-br from-[#E5989B] to-[#FCD5CE] flex items-center justify-center text-white font-bold text-lg shadow-sm cursor-pointer hover:opacity-90"
+               onClick={onLogout}
+               title="Đăng xuất"
+             >
                 {currentUser.name.charAt(0).toUpperCase()}
              </div>
           </div>

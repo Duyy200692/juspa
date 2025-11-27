@@ -1,6 +1,6 @@
 
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+// import { initializeApp } from "firebase/app";
+// import { getFirestore } from "firebase/firestore";
 
 // --- QUAN TRỌNG: THAY THẾ CÁC GIÁ TRỊ DƯỚI ĐÂY BẰNG THÔNG TIN TỪ FIREBASE CONSOLE CỦA BẠN ---
 const firebaseConfig = {
@@ -12,7 +12,10 @@ const firebaseConfig = {
   appId: "1:457281875952:web:504941230227ba7a007735"
 };
 // Khởi tạo Firebase
-const app = initializeApp(firebaseConfig);
+// const app = initializeApp(firebaseConfig);
 
 // Khởi tạo và export Firestore Database để dùng ở các file khác
-export const db = getFirestore(app);
+// export const db = getFirestore(app);
+
+// Mock export to fix import errors in other files
+export const db = {};

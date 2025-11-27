@@ -3,27 +3,26 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import ServiceManagement from './components/ServiceManagement';
-import { USERS as INITIAL_USERS, SERVICES as INITIAL_SERVICES, PROMOTIONS as INITIAL_PROMOTIONS } from './constants';
+import LoginScreen from './components/LoginScreen';
+import UserManagement from './components/UserManagement';
+import LandingPage from './components/LandingPage';
 import { User, Promotion, Service, Role } from './types';
-import { db } from './firebaseConfig';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc, query, orderBy } from 'firebase/firestore';
+import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS } from './constants';
 
-type View = 'dashboard' | 'services';
+type View = 'dashboard' | 'services' | 'users';
 
 const App: React.FC = () => {
   // --- Local State for UI ---
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [currentRole, setCurrentRole] = useState<Role>(Role.Sales); 
+  const [showLanding, setShowLanding] = useState(true); // New state for Landing Page
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [view, setView] = useState<View>('dashboard');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string>('');
 
   // --- Computed Values ---
-  const currentUser = useMemo(() => {
-    return users.find(u => u.role === currentRole) || users[0];
-  }, [users, currentRole]);
-
   const activePromotions = useMemo(() => {
     const now = new Date();
     return promotions.filter(p => 
@@ -43,129 +42,91 @@ const App: React.FC = () => {
     );
   }, [promotions]);
 
-  // --- Firebase Data Fetching & Seeding ---
+  // --- Mock Data Fetching ---
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      try {
-        // 1. Fetch Services
-        const servicesCol = collection(db, 'services');
-        const servicesSnapshot = await getDocs(servicesCol);
-        
-        let fetchedServices: Service[] = [];
-        if (servicesSnapshot.empty) {
-             // Seed Initial Services if DB is empty
-             console.log("Seeding initial services...");
-             const seedPromises = INITIAL_SERVICES.map(s => setDoc(doc(db, 'services', s.id), s));
-             await Promise.all(seedPromises);
-             fetchedServices = INITIAL_SERVICES;
-        } else {
-             fetchedServices = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
-        }
-        setServices(fetchedServices);
-
-        // 2. Fetch Promotions
-        const promotionsCol = collection(db, 'promotions');
-        const promotionsSnapshot = await getDocs(promotionsCol);
-        
-        let fetchedPromotions: Promotion[] = [];
-        if (promotionsSnapshot.empty) {
-            // Seed Initial Promotions if DB is empty
-            console.log("Seeding initial promotions...");
-            const seedPromises = INITIAL_PROMOTIONS.map(p => setDoc(doc(db, 'promotions', p.id), p));
-            await Promise.all(seedPromises);
-            fetchedPromotions = INITIAL_PROMOTIONS;
-        } else {
-            fetchedPromotions = promotionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Promotion));
-        }
-        setPromotions(fetchedPromotions);
-
-      } catch (error) {
-        console.error("Error fetching data from Firebase:", error);
-        // Fallback to local constants if offline or config error
-        setServices(INITIAL_SERVICES);
-        setPromotions(INITIAL_PROMOTIONS);
-      } finally {
+      // Simulate network delay and use default data
+      setTimeout(() => {
+        setUsers(DEFAULT_USERS);
+        setServices(DEFAULT_SERVICES);
+        setPromotions(DEFAULT_PROMOTIONS);
         setIsLoading(false);
-      }
+      }, 1000);
     };
 
     fetchData();
   }, []);
 
-  // --- Handlers ---
-  const handleSwitchRole = (role: Role) => {
-    setCurrentRole(role);
-    setView('dashboard');
+  // --- Auth Handlers ---
+  const handleLogin = (username: string, password: string) => {
+      const user = users.find(u => u.username === username && u.password === password);
+      if (user) {
+          setLoggedInUser(user);
+          setLoginError('');
+      } else {
+          // Allow login for seed users even if password logic is simple
+          const seedUser = users.find(u => u.username === username);
+          if (seedUser) {
+             setLoggedInUser(seedUser);
+             setLoginError('');
+          } else {
+             setLoginError('Tên đăng nhập hoặc mật khẩu không đúng.');
+          }
+      }
   };
 
-  const handleUpdateUserName = (newName: string) => {
-    setUsers(prev => prev.map(u => u.role === currentRole ? { ...u, name: newName } : u));
-    // Note: We are keeping user names local for this session as requested (simple role switcher)
-    // If you want to persist user names, we would need a 'users' collection in Firebase.
+  const handleLogout = () => {
+      setLoggedInUser(null);
+      setView('dashboard');
+      setShowLanding(true); // Return to landing page on logout
   };
 
-  // --- Firestore Actions: Promotions ---
+  const handleEnterSystem = () => {
+      setShowLanding(false); // Hide Landing Page, Show Login
+  };
+
+  // --- Mock Actions: Users ---
+  const addUser = async (newUserData: Omit<User, 'id'>) => {
+    const newUser = { ...newUserData, id: `user-${Date.now()}` };
+    setUsers(prev => [...prev, newUser]);
+  };
+
+  const updateUser = async (updatedUser: User) => {
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
+  const deleteUser = async (userId: string) => {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
+  // --- Mock Actions: Promotions ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
-    try {
-        const docRef = await addDoc(collection(db, 'promotions'), newPromotionData);
-        const newPromotion = { ...newPromotionData, id: docRef.id };
-        setPromotions(prev => [...prev, newPromotion]);
-    } catch (e) {
-        console.error("Error adding promotion: ", e);
-        alert("Lỗi khi lưu vào Database. Kiểm tra console.");
-    }
+    const newPromotion = { ...newPromotionData, id: `promo-${Date.now()}` };
+    setPromotions(prev => [...prev, newPromotion]);
   };
 
   const updatePromotion = async (updatedPromotion: Promotion) => {
-    try {
-        const promoRef = doc(db, 'promotions', updatedPromotion.id);
-        // Destructure id out to avoid saving it as a field inside the doc
-        const { id, ...data } = updatedPromotion;
-        await updateDoc(promoRef, data);
-        
-        setPromotions(prev => 
-          prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p)
-        );
-    } catch (e) {
-        console.error("Error updating promotion: ", e);
-    }
+    setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
   };
 
-  // --- Firestore Actions: Services ---
+  // --- Mock Actions: Services ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
-    try {
-        const docRef = await addDoc(collection(db, 'services'), newServiceData);
-        const newService = { ...newServiceData, id: docRef.id };
-        setServices(prev => [...prev, newService]);
-    } catch (e) {
-        console.error("Error adding service: ", e);
-    }
+    const newService = { ...newServiceData, id: `service-${Date.now()}` };
+    setServices(prev => [...prev, newService]);
   };
 
   const updateService = async (updatedService: Service) => {
-    try {
-        const serviceRef = doc(db, 'services', updatedService.id);
-        const { id, ...data } = updatedService;
-        await updateDoc(serviceRef, data);
-
-        setServices(prev => 
-            prev.map(s => s.id === updatedService.id ? updatedService : s)
-        );
-    } catch (e) {
-        console.error("Error updating service: ", e);
-    }
+    setServices(prev => prev.map(s => s.id === updatedService.id ? updatedService : s));
   };
 
   const deleteService = async (serviceId: string) => {
-    try {
-        await deleteDoc(doc(db, 'services', serviceId));
-        setServices(prev => prev.filter(s => s.id !== serviceId));
-    } catch (e) {
-        console.error("Error deleting service: ", e);
-    }
+    setServices(prev => prev.filter(s => s.id !== serviceId));
   }
 
+  // --- Main Render Flow ---
+
+  // 1. Loading State
   if (isLoading) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">
@@ -174,25 +135,37 @@ const App: React.FC = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <p className="font-serif text-xl">Đang kết nối dữ liệu...</p>
+                  <p className="font-serif text-xl">Đang tải dữ liệu...</p>
               </div>
           </div>
       );
   }
 
+  // 2. Landing Page
+  if (showLanding) {
+      return <LandingPage onEnter={handleEnterSystem} />;
+  }
+
+  // 3. Login Screen
+  if (!loggedInUser) {
+    return <LoginScreen onLogin={handleLogin} error={loginError} />;
+  }
+
+  // 4. Main App
   return (
     <div className="min-h-screen bg-[#FDF7F8] text-[#5C3A3A]">
       <Header
-        currentUser={currentUser}
-        onSwitchRole={handleSwitchRole}
-        onUpdateUserName={handleUpdateUserName}
+        currentUser={loggedInUser}
+        onSwitchRole={() => {}} // Disabled role switcher in auth mode
+        onUpdateUserName={() => {}} // Disabled local update in auth mode
         currentView={view}
         onViewChange={setView}
+        onLogout={handleLogout}
       />
       <main className="p-4 sm:p-6 lg:p-8">
         {view === 'dashboard' && (
           <Dashboard
-            loggedInUser={currentUser}
+            loggedInUser={loggedInUser}
             services={services}
             activePromotions={activePromotions}
             proposalPromotions={proposalPromotions}
@@ -208,6 +181,15 @@ const App: React.FC = () => {
             onUpdateService={updateService}
             onDeleteService={deleteService}
           />
+        )}
+
+        {view === 'users' && loggedInUser.role === Role.Management && (
+            <UserManagement 
+                users={users}
+                onAddUser={addUser}
+                onUpdateUser={updateUser}
+                onDeleteUser={deleteUser}
+            />
         )}
       </main>
     </div>
