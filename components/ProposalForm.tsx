@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
 import { Service, Promotion, PromotionService, PromotionStatus, User, Role } from '../types';
@@ -26,6 +26,16 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
 
   const isEditMode = !!promotionToEdit;
   const isEditingActive = isEditMode && promotionToEdit?.status === PromotionStatus.Approved && currentUser.role === Role.Management;
+
+  // Calculate bulk summary
+  const bulkSummary = useMemo(() => {
+    const selectedItems = selectedServices.filter(s => comboSelectionIds.includes(s.id));
+    const totalOriginal = selectedItems.reduce((acc, s) => acc + Number(s.fullPrice), 0);
+    const totalDiscounted = selectedItems.reduce((acc, s) => acc + Number(s.discountPrice), 0);
+    return { count: selectedItems.length, totalOriginal, totalDiscounted };
+  }, [selectedServices, comboSelectionIds]);
+
+  const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN').format(val);
 
   useEffect(() => {
     if (isOpen) {
@@ -66,6 +76,19 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
       setSelectedServices(prev => prev.map(s => 
           s.id === id ? { ...s, [field]: value } : s
       ));
+  };
+
+  // Helper to handle percentage change for a single row
+  const handlePercentChange = (id: string, fullPrice: number, percentStr: string) => {
+      const percent = parseFloat(percentStr);
+      if (!isNaN(percent) && fullPrice > 0) {
+          const discountAmt = fullPrice * (percent / 100);
+          const newPrice = Math.round((fullPrice - discountAmt) / 1000) * 1000; // Round to nearest 1000
+          handleSelectedServiceChange(id, 'discountPrice', newPrice);
+      } else if (percentStr === '') {
+          // If empty, maybe reset to full price? or keep as is? Let's just do nothing or set to full
+          // handleSelectedServiceChange(id, 'discountPrice', fullPrice);
+      }
   };
   
   const handleRemoveSelectedService = (id: string) => {
@@ -248,16 +271,23 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                 {/* Bulk Actions Toolbar - Redesigned */}
                 <div className="bg-white p-4 rounded-lg border-2 border-dashed border-[#E5989B] mb-4 flex flex-col gap-3">
                     <div className="flex justify-between items-center">
-                        <span className="font-bold text-[#D97A7D]">Công cụ tính giá & Combo</span>
+                        <span className="font-bold text-[#D97A7D] flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                            </svg>
+                            Công cụ tính giá & Combo
+                        </span>
                         <button onClick={handleSelectAll} className="text-xs underline text-gray-500 hover:text-[#D97A7D]">
                             {comboSelectionIds.length === selectedServices.length && selectedServices.length > 0 ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                         </button>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 items-end sm:items-center">
+                    <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center">
                          {/* Discount Input */}
                          <div className="flex-1 w-full">
-                            <label className="text-xs text-gray-500 block mb-1">Giảm giá theo % (cho {comboSelectionIds.length} mục đã chọn)</label>
+                            <label className="text-xs text-gray-500 block mb-1">
+                                Giảm nhanh theo % (Đã chọn: <span className="font-bold text-[#D97A7D]">{bulkSummary.count}</span>)
+                            </label>
                             <div className="flex">
                                 <input 
                                     type="number" 
@@ -268,7 +298,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                                 />
                                 <button 
                                     onClick={handleApplyBulkDiscount}
-                                    className="bg-[#E5989B] text-white px-4 rounded-r-md text-sm font-medium hover:bg-[#D97A7D] disabled:opacity-50"
+                                    className="bg-[#E5989B] text-white px-4 rounded-r-md text-sm font-medium hover:bg-[#D97A7D] disabled:opacity-50 whitespace-nowrap"
                                     disabled={comboSelectionIds.length === 0}
                                 >
                                     Áp dụng
@@ -288,13 +318,28 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                             </button>
                          </div>
                     </div>
+                    
+                    {/* Bulk Summary Info */}
+                    {bulkSummary.count > 0 && (
+                        <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 flex gap-4">
+                            <span>Tổng gốc: <b>{formatCurrency(bulkSummary.totalOriginal)}</b></span>
+                            <span>&rarr;</span>
+                            <span>Sau giảm: <b className="text-[#D97A7D]">{formatCurrency(bulkSummary.totalDiscounted)}</b></span>
+                        </div>
+                    )}
+
                     {comboSelectionIds.length === 0 && selectedServices.length > 0 && (
                         <p className="text-[10px] text-red-400 italic">* Vui lòng tick chọn vào các ô vuông ở góc mỗi dịch vụ bên dưới để sử dụng công cụ này.</p>
                     )}
                 </div>
 
                 <div className="mt-2 space-y-3">
-                    {selectedServices.map(service => (
+                    {selectedServices.map(service => {
+                        const calculatedPercent = service.fullPrice > 0 
+                            ? Math.round(((service.fullPrice - service.discountPrice) / service.fullPrice) * 100) 
+                            : 0;
+
+                        return (
                         <div key={service.id} className={`bg-gray-50 p-4 pt-8 border rounded-lg relative transition-colors ${comboSelectionIds.includes(service.id) ? 'border-purple-300 bg-purple-50/30' : ''}`}>
                              {!service.isCombo && (
                                 <input
@@ -302,7 +347,6 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                                     checked={comboSelectionIds.includes(service.id)}
                                     onChange={() => handleComboSelectionToggle(service.id)}
                                     className="absolute top-2 left-2 h-5 w-5 rounded border-gray-400 text-[#E5989B] focus:ring-[#D97A7D] cursor-pointer"
-                                    aria-label={`Select ${service.name} for actions`}
                                 />
                              )}
                              <button onClick={() => handleRemoveSelectedService(service.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500">
@@ -324,13 +368,35 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                                     <label className="text-xs font-medium text-gray-500">Giá gốc (niêm yết)</label>
                                     <input type="number" value={service.fullPrice} onChange={e => handleSelectedServiceChange(service.id, 'fullPrice', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 disabled:bg-gray-200" disabled={!service.id.startsWith('custom-') && !service.isCombo} />
                                 </div>
-                                <div>
-                                    <label className="text-xs font-medium text-gray-500">Giá khuyến mãi</label>
-                                    <input type="number" value={service.discountPrice} onChange={e => handleSelectedServiceChange(service.id, 'discountPrice', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 bg-pink-50" />
+                                
+                                {/* Discount Pricing Row with % Calculation */}
+                                <div className="flex gap-2">
+                                    <div className="w-1/3">
+                                        <label className="text-xs font-medium text-gray-500">% Giảm</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                placeholder="0"
+                                                value={calculatedPercent}
+                                                onChange={(e) => handlePercentChange(service.id, service.fullPrice, e.target.value)}
+                                                className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 text-center focus:ring-[#E5989B] focus:border-[#E5989B]"
+                                            />
+                                            <span className="absolute right-6 top-1.5 text-xs text-transparent pointer-events-none">%</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-2/3">
+                                        <label className="text-xs font-medium text-gray-500">Giá khuyến mãi</label>
+                                        <input 
+                                            type="number" 
+                                            value={service.discountPrice} 
+                                            onChange={e => handleSelectedServiceChange(service.id, 'discountPrice', e.target.value)} 
+                                            className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 bg-pink-50 font-bold text-[#D97A7D]" 
+                                        />
+                                    </div>
                                 </div>
                              </div>
                         </div>
-                    ))}
+                    )})}
                      {selectedServices.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Chưa có dịch vụ nào được chọn. Hãy chọn một dịch vụ có sẵn hoặc thêm dịch vụ tùy chỉnh.</p>}
                 </div>
                 
