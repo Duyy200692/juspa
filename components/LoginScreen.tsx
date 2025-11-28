@@ -18,12 +18,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, error }) => {
 
   const JuSpaLogoLarge = () => (
     <div className="flex flex-col items-center text-[#E5989B] mb-8">
-        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[#D97A7D]">
-            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12 2C14 4 15 7 14 9C13 11 11 12 10 11C9 10 8.5 7.5 9.5 5.5C10.5 3.5 12 2 12 2Z" stroke="currentColor" strokeWidth="2"/>
-        </svg>
-        <span className="font-serif font-bold text-4xl tracking-wider mt-2">JUSpa</span>
-        <span className="text-gray-500 font-light mt-1 text-lg">Promotion Manager</span>
+        {/* Logo Icon Removed */}
+        <span className="font-serif font-bold text-5xl tracking-wider mt-2 text-[#D97A7D]">JUSpa</span>
+        <span className="text-gray-500 font-light mt-2 text-lg">Promotion Manager</span>
     </div>
   );
 
