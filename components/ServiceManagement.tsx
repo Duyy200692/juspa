@@ -178,7 +178,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {Object.entries(groupedServices).length > 0 ? (
-                                    Object.entries(groupedServices).map(([category, items]) => (
+                                    Object.entries(groupedServices).map(([category, items]: [string, Service[]]) => (
                                         <React.Fragment key={category}>
                                             <tr className="bg-pink-50">
                                                 <td colSpan={11} className="py-2 px-4 font-bold text-[#D97A7D] text-sm uppercase tracking-wide sticky left-0 bg-pink-50 z-10">

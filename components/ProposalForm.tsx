@@ -34,6 +34,21 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
   const isEditMode = !!promotionToEdit;
   const isEditingActive = isEditMode && promotionToEdit?.status === PromotionStatus.Approved && currentUser.role === Role.Management;
 
+  // Group services by category for selection list
+  const groupedServices = useMemo(() => {
+    const groups: Record<string, Service[]> = {};
+    services.forEach(s => {
+        const cat = s.category || 'Khác';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(s);
+    });
+    // Sort keys to keep "Khác" at the end if possible, or just alphabetically
+    return Object.keys(groups).sort().reduce((acc, key) => {
+        acc[key] = groups[key];
+        return acc;
+    }, {} as Record<string, Service[]>);
+  }, [services]);
+
   // Calculate bulk summary
   const bulkSummary = useMemo(() => {
     const selectedItems = selectedServices.filter(s => comboSelectionIds.includes(s.id));
@@ -326,15 +341,35 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
         <div className="space-y-4">
             <div>
                 <h3 className="text-md font-medium text-gray-800">1. Chọn dịch vụ có sẵn</h3>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 border rounded-md max-h-40 overflow-y-auto">
-                    {services.map(service => (
-                        <div key={service.id} className="flex items-center">
-                            <input type="checkbox" id={`service-${service.id}`} checked={selectedServices.some(s => s.id === service.id && !s.isCombo)} onChange={() => handleServiceToggle(service)} className="h-4 w-4 rounded border-gray-300 text-[#E5989B] focus:ring-[#D97A7D]" />
-                            <label htmlFor={`service-${service.id}`} className="ml-2 text-sm text-gray-600">
-                                {service.name} <span className="text-xs text-gray-400">({service.type === 'combo' ? 'Combo' : 'Lẻ'})</span>
-                            </label>
+                {/* Grouped Service Selection List */}
+                <div className="mt-2 border border-gray-200 rounded-md max-h-60 overflow-y-auto bg-white">
+                    {Object.entries(groupedServices).map(([category, items]: [string, Service[]]) => (
+                        <div key={category} className="mb-0">
+                            <div className="sticky top-0 bg-[#FDF7F8] px-3 py-2 text-xs font-bold text-[#D97A7D] uppercase tracking-wide border-b border-t border-gray-100 first:border-t-0 z-10">
+                                {category}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">
+                                {items.map(service => (
+                                    <div key={service.id} className="flex items-center hover:bg-gray-50 p-1 rounded">
+                                        <input 
+                                            type="checkbox" 
+                                            id={`service-${service.id}`} 
+                                            checked={selectedServices.some(s => s.id === service.id && !s.isCombo)} 
+                                            onChange={() => handleServiceToggle(service)} 
+                                            className="h-4 w-4 rounded border-gray-300 text-[#E5989B] focus:ring-[#D97A7D] cursor-pointer" 
+                                        />
+                                        <label htmlFor={`service-${service.id}`} className="ml-2 text-sm text-gray-600 cursor-pointer select-none">
+                                            {service.name} 
+                                            {service.type === 'combo' && <span className="ml-1 text-[10px] text-purple-500 font-medium">(Combo)</span>}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     ))}
+                    {Object.keys(groupedServices).length === 0 && (
+                        <div className="p-4 text-center text-gray-400 text-sm">Chưa có dịch vụ nào. Hãy thêm ở trang Quản lý Dịch vụ.</div>
+                    )}
                 </div>
             </div>
 
