@@ -218,6 +218,28 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
       setBulkDiscountPercent('');
   };
 
+  const handleApplyPriceType = (type: 'promo' | 'package5' | 'package15') => {
+      if (comboSelectionIds.length === 0) {
+          alert("Vui lòng chọn ít nhất 1 dịch vụ để áp dụng giá.");
+          return;
+      }
+
+      setSelectedServices(prev => prev.map(s => {
+          if (comboSelectionIds.includes(s.id)) {
+              let newPrice = 0;
+              if (type === 'promo') newPrice = Number(s.pricePromo);
+              if (type === 'package5') newPrice = Number(s.pricePackage5);
+              if (type === 'package15') newPrice = Number(s.pricePackage15);
+
+              // Only apply if the price is valid (> 0)
+              if (newPrice > 0) {
+                  return { ...s, discountPrice: newPrice };
+              }
+          }
+          return s;
+      }));
+  };
+
   const handleResetConsultationSteps = () => {
       const defaultSteps = generateDefaultSteps(selectedServices);
       setCustomConsultationNote(defaultSteps);
@@ -329,7 +351,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                          {/* Discount Input */}
                          <div className="flex-1 w-full">
                             <label className="text-xs text-gray-500 block mb-1">
-                                Giảm nhanh theo % (Đã chọn: <span className="font-bold text-[#D97A7D]">{bulkSummary.count}</span>)
+                                Giảm nhanh theo %
                             </label>
                             <div className="flex">
                                 <input 
@@ -361,10 +383,39 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                             </button>
                          </div>
                     </div>
+
+                    {/* NEW: Recurring Price Buttons */}
+                    <div className="border-t border-pink-200 pt-2 mt-1">
+                        <label className="text-xs text-gray-500 block mb-2">Áp dụng giá từ Bảng giá (Chương trình định kỳ):</label>
+                        <div className="flex flex-wrap gap-2">
+                            <button 
+                                onClick={() => handleApplyPriceType('promo')}
+                                disabled={comboSelectionIds.length === 0}
+                                className="px-3 py-1.5 bg-white border border-[#E5989B] text-[#D97A7D] text-xs rounded hover:bg-pink-100 disabled:opacity-50 transition-colors"
+                            >
+                                Áp dụng Giá KM/Trial
+                            </button>
+                            <button 
+                                onClick={() => handleApplyPriceType('package5')}
+                                disabled={comboSelectionIds.length === 0}
+                                className="px-3 py-1.5 bg-white border border-[#E5989B] text-[#D97A7D] text-xs rounded hover:bg-pink-100 disabled:opacity-50 transition-colors"
+                            >
+                                Áp dụng Giá Gói 5
+                            </button>
+                            <button 
+                                onClick={() => handleApplyPriceType('package15')}
+                                disabled={comboSelectionIds.length === 0}
+                                className="px-3 py-1.5 bg-white border border-[#E5989B] text-[#D97A7D] text-xs rounded hover:bg-pink-100 disabled:opacity-50 transition-colors"
+                            >
+                                Áp dụng Giá Gói 15
+                            </button>
+                        </div>
+                    </div>
                     
                     {/* Bulk Summary Info */}
                     {bulkSummary.count > 0 && (
-                        <div className="text-xs text-gray-600 bg-white p-2 rounded border border-pink-100 flex gap-4">
+                        <div className="text-xs text-gray-600 bg-white p-2 rounded border border-pink-100 flex gap-4 mt-2">
+                            <span>Đã chọn: <b className="text-[#D97A7D]">{bulkSummary.count}</b></span>
                             <span>Tổng gốc: <b>{formatCurrency(bulkSummary.totalOriginal)}</b></span>
                             <span>&rarr;</span>
                             <span>Sau giảm: <b className="text-[#D97A7D]">{formatCurrency(bulkSummary.totalDiscounted)}</b></span>
@@ -421,7 +472,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                                             placeholder="0"
                                             value={calculatedPercent}
                                             onChange={(e) => handlePercentChange(service.id, service.fullPrice, e.target.value)}
-                                            className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 pl-2 pr-6 text-center focus:ring-[#E5989B] focus:border-[#E5989B]"
+                                            className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 pl-2 pr-6 text-center focus:ring-[#E5989B] focus:border-[#E5989B] text-gray-500"
                                         />
                                         <span className="absolute right-2 top-7 text-xs text-gray-500 pointer-events-none font-bold">%</span>
                                     </div>
