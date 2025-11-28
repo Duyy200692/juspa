@@ -26,11 +26,11 @@ const createService = (id: string, name: string, category: string, desc: string,
         priceOriginal: basePrice,
         discountPercent: discountPercent,
         pricePromo: pricePromo, 
-        pricePackage5: basePrice * 5, // Buy 5 Get 5 (Example logic)
+        pricePackage5: basePrice * 5, // Buy 5 Get 5
         pricePackage15: basePrice * 10, // Buy 10 Get 15
         
         // Standard Packages (Calculated with slight discounts)
-        pricePackage2: basePrice * 2 * 0.95, 
+        pricePackage3: basePrice * 3 * 0.95, // Package 3 sessions
         pricePackage5Sessions: basePrice * 5 * 0.9, 
         pricePackage10: basePrice * 10 * 0.85, 
         pricePackage20: basePrice * 20 * 0.8, 

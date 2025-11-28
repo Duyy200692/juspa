@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Service, ServiceType } from '../types';
 import Button from './shared/Button';
 import EditServiceModal from './EditServiceModal';
@@ -21,6 +21,20 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
     const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     
+    // Store manually added categories that don't have services yet
+    const [extraCategories, setExtraCategories] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem('extraCategories');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('extraCategories', JSON.stringify(extraCategories));
+    }, [extraCategories]);
+    
     const [newService, setNewService] = useState<Omit<Service, 'id'>>({
         name: '',
         category: '',
@@ -32,16 +46,18 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         pricePromo: 0,
         pricePackage5: 0,
         pricePackage15: 0,
-        pricePackage2: 0,
+        pricePackage3: 0, // Package 3
         pricePackage5Sessions: 0,
         pricePackage10: 0,
         pricePackage20: 0,
     });
 
     const existingCategories = useMemo(() => {
-        const cats = new Set(services.map(s => s.category).filter(Boolean) as string[]);
-        return Array.from(cats).sort();
-    }, [services]);
+        const serviceCats = services.map(s => s.category).filter(Boolean) as string[];
+        // Merge service categories with manually added extra categories
+        const allCats = new Set([...serviceCats, ...extraCategories]);
+        return Array.from(allCats).sort();
+    }, [services, extraCategories]);
 
     const groupedServices = useMemo(() => {
         const filtered = services.filter(s => s.type === activeTab);
@@ -86,7 +102,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                 pricePromo: 0,
                 pricePackage5: 0,
                 pricePackage15: 0,
-                pricePackage2: 0,
+                pricePackage3: 0,
                 pricePackage5Sessions: 0,
                 pricePackage10: 0,
                 pricePackage20: 0,
@@ -102,9 +118,21 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
     };
 
     const handleUpdateCategoryName = (oldName: string, newName: string) => {
+        // Update in services
         services.filter(s => s.category === oldName).forEach(service => {
             onUpdateService({ ...service, category: newName });
         });
+        
+        // Update in extraCategories if exists
+        if (extraCategories.includes(oldName)) {
+            setExtraCategories(prev => prev.map(c => c === oldName ? newName : c));
+        }
+    };
+
+    const handleAddCategory = (newCategory: string) => {
+        if (!existingCategories.includes(newCategory)) {
+            setExtraCategories(prev => [...prev, newCategory]);
+        }
     };
 
     const TabButton = ({ type, label }: { type: ServiceType; label: string }) => (
@@ -139,9 +167,9 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50/50">Giá bán gốc</th>
                                     <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-50/30">Giảm</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Giá KM/Trial</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/30">Giảm -5 Tặng 5</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/30">5 Tặng 5</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/30">10 Tặng 15</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 2 lần</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 3 lần</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 5 lần</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 10 lần</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 20 lần</th>
@@ -172,7 +200,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                                     <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage5)}</td>
                                                     <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage15)}</td>
                                                     
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage2)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage3)}</td>
                                                     <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage5Sessions)}</td>
                                                     <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage10)}</td>
                                                     <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage20)}</td>
@@ -242,7 +270,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
 
                      <div className="lg:col-span-2">
                         <label className="block text-xs font-medium text-gray-700 bg-yellow-50 w-fit px-1 rounded">Giá bán gốc</label>
-                        <input type="number" value={newService.priceOriginal} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30" required/>
+                        <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30" required/>
                     </div>
                     {/* Discount & Promo Price */}
                     <div>
@@ -251,34 +279,34 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                     </div>
                      <div>
                         <label className="block text-xs font-medium text-gray-700">Giá KM/Trial</label>
-                        <input type="number" value={newService.pricePromo} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePromo || ''} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     
                      <div>
-                        <label className="block text-xs font-medium text-gray-700">Giảm -5 Tặng 5</label>
-                        <input type="number" value={newService.pricePackage5} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <label className="block text-xs font-medium text-gray-700">5 Tặng 5</label>
+                        <input type="number" value={newService.pricePackage5 || ''} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                      <div>
                         <label className="block text-xs font-medium text-gray-700">10 Tặng 15</label>
-                        <input type="number" value={newService.pricePackage15} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage15 || ''} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     
                     {/* New Package Inputs */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-700">Gói 2 lần</label>
-                        <input type="number" value={newService.pricePackage2} onChange={e => handleNewServiceChange('pricePackage2', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <label className="block text-xs font-medium text-gray-700">Gói 3 lần</label>
+                        <input type="number" value={newService.pricePackage3 || ''} onChange={e => handleNewServiceChange('pricePackage3', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-700">Gói 5 lần</label>
-                        <input type="number" value={newService.pricePackage5Sessions} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage5Sessions || ''} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-700">Gói 10 lần</label>
-                        <input type="number" value={newService.pricePackage10} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage10 || ''} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-700">Gói 20 lần</label>
-                        <input type="number" value={newService.pricePackage20} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage20 || ''} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
 
                     <div className="md:col-span-2 lg:col-span-4">
@@ -307,6 +335,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                 onClose={() => setIsCategoryModalOpen(false)}
                 categories={existingCategories}
                 onUpdateCategory={handleUpdateCategoryName}
+                onAddCategory={handleAddCategory}
             />
         </div>
     );

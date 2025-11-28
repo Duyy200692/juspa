@@ -28,11 +28,11 @@ export interface Service {
   priceOriginal: number;    // Giá bán gốc
   discountPercent?: number; // Cột Giảm (%) để note
   pricePromo: number;       // Giá KM/Trial
-  pricePackage5: number;    // Giảm-5 tặng 5 (Promotion Package)
+  pricePackage5: number;    // 5 tặng 5 (Promotion Package)
   pricePackage15: number;   // 10 tặng 15 (Promotion Package)
   
   // Session Packages
-  pricePackage2: number;        // Gói 2 lần
+  pricePackage3: number;        // Gói 3 lần (Was 2)
   pricePackage5Sessions: number; // Gói 5 lần (Distinct from Buy 5 Get 5)
   pricePackage10: number;       // Gói 10 lần
   pricePackage20: number;       // Gói 20 lần
