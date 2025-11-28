@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, Service, Promotion, Role, PromotionStatus } from '../types';
 import Button from './shared/Button';
@@ -11,8 +10,8 @@ interface DashboardProps {
   services: Service[];
   activePromotions: Promotion[];
   proposalPromotions: Promotion[];
-  onAddPromotion: (promotion: Omit<Promotion, 'id'>) => void;
-  onUpdatePromotion: (promotion: Promotion) => void;
+  onAddPromotion: (promotion: Omit<Promotion, 'id'>) => Promise<void>;
+  onUpdatePromotion: (promotion: Promotion) => Promise<void>;
 }
 
 const getStatusColor = (status: PromotionStatus) => {
@@ -48,16 +47,17 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
     setEditingProposal(null);
   };
 
-  const handleFormSubmit = (promotionData: Omit<Promotion, 'id'> | Promotion) => {
+  const handleFormSubmit = async (promotionData: Omit<Promotion, 'id'> | Promotion) => {
     if ('id' in promotionData) {
-      onUpdatePromotion(promotionData as Promotion);
+      await onUpdatePromotion(promotionData as Promotion);
     } else {
-      onAddPromotion(promotionData as Omit<Promotion, 'id'>);
+      await onAddPromotion(promotionData as Omit<Promotion, 'id'>);
     }
     handleFormClose();
   };
 
   const getMonthFromDate = (dateString: string) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
     return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
   }
@@ -82,7 +82,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
           </div>
         ) : (
           <div className="text-center py-10 bg-white rounded-lg shadow-sm">
-            <p className="text-gray-500">Chưa có chương trình nào được duyệt.</p>
+            <p className="text-gray-500">Chưa có chương trình nào được duyệt hoặc sắp diễn ra.</p>
           </div>
         )}
       </div>
@@ -98,7 +98,6 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
             )}
           </div>
           
-          {/* Added overflow-x-auto for horizontal scrolling on mobile */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
               <table className="min-w-full whitespace-nowrap">

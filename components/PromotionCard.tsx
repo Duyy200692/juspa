@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PromotionService } from '../types';
 import Button from './shared/Button';
@@ -12,7 +11,8 @@ interface PromotionCardProps {
   canEdit?: boolean;
 }
 
-const formatCurrency = (value: number) => {
+const formatCurrency = (value: number | undefined) => {
+    if (value === undefined || value === null) return '0';
     return new Intl.NumberFormat('vi-VN').format(value);
 };
 
@@ -48,7 +48,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, services
         <ul className="space-y-4 sm:space-y-2">
           {services.map(service => {
             // Logic change: If fullPrice is 0 (unlikely but safe), avoid NaN
-            const discountPercentage = service.fullPrice > 0 ? Math.round(((service.fullPrice - service.discountPrice) / service.fullPrice) * 100) : 0;
+            const discountPercentage = (service.fullPrice || 0) > 0 ? Math.round((((service.fullPrice || 0) - (service.discountPrice || 0)) / (service.fullPrice || 0)) * 100) : 0;
             return (
               <li key={service.id} className="border-t border-dashed border-pink-200 py-3 flex flex-col sm:flex-row sm:items-center px-2 sm:px-4">
                 

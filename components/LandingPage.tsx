@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface LandingPageProps {
@@ -9,15 +8,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center bg-[#FEFBFB] font-sans">
       
-      {/* Centered Content */}
       <div className="relative z-10 flex flex-col items-center text-center p-6 animate-fade-in-up">
           
-          {/* Title */}
           <h1 className="font-serif text-6xl md:text-8xl font-bold text-[#5C3A3A] mb-12 tracking-wide">
               JUSpa
           </h1>
 
-          {/* The Single Button */}
           <button 
             onClick={onEnter}
             className="group relative px-12 py-4 bg-[#E5989B] hover:bg-[#D97A7D] rounded-full text-white font-medium text-lg tracking-wider transition-all duration-300 hover:-translate-y-1 hover:shadow-xl shadow-md overflow-hidden"
@@ -31,7 +27,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
           </button>
       </div>
 
-      {/* Minimal Footer */}
       <div className="absolute bottom-8 text-[#5C3A3A]/30 text-xs tracking-widest">
           © {new Date().getFullYear()} JUSPA SYSTEM
       </div>

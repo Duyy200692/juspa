@@ -1,4 +1,3 @@
-
 import { User, Service, Promotion, Role, PromotionStatus } from './types';
 
 // Default users representing the 4 roles

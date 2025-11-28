@@ -1,4 +1,3 @@
-
 export enum Role {
   Product = 'Product',
   Marketing = 'Marketing',

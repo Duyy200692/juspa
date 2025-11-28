@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
@@ -26,7 +25,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({ isOpen, onClose, se
     setFormData(prev => {
         const updated = { ...prev, [field]: value };
         
-        // Auto calculate promo price if discount or original price changes
         if ((field === 'priceOriginal' || field === 'discountPercent') && updated.priceOriginal) {
             const discount = Number(updated.discountPercent) || 0;
             const original = Number(updated.priceOriginal) || 0;
@@ -46,7 +44,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({ isOpen, onClose, se
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Chỉnh sửa: ${service.name}`}>
       <div className="space-y-4">
-        {/* Name & Category */}
         <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-600">Tên Dịch vụ</label>
@@ -54,83 +51,30 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({ isOpen, onClose, se
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600">Danh mục (Category)</label>
-              <input 
-                type="text" 
-                list="edit-categories-list"
-                value={formData.category || ''} 
-                onChange={e => handleChange('category', e.target.value)} 
-                className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" 
-                placeholder="VD: RF, Triệt lông..."
-              />
+              <input type="text" list="edit-categories-list" value={formData.category || ''} onChange={e => handleChange('category', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" placeholder="VD: RF, Triệt lông..." />
               <datalist id="edit-categories-list">
-                  <option value="Công nghệ RF" />
-                  <option value="Hydrafacial" />
-                  <option value="GeneoX Pro" />
-                  <option value="Triệt Lông" />
-                  <option value="Chăm sóc da" />
-                  <option value="Thư giãn" />
-                  <option value="Combo Đặc Biệt" />
+                  <option value="Công nghệ RF" /><option value="Hydrafacial" /><option value="GeneoX Pro" /><option value="Triệt Lông" /><option value="Chăm sóc da" /><option value="Thư giãn" /><option value="Combo Đặc Biệt" />
               </datalist>
             </div>
         </div>
 
-        <div>
-          <label className="text-sm font-medium text-gray-600">Mô tả</label>
-          <textarea value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" rows={2}></textarea>
-        </div>
-        <div>
-          <label className="text-sm font-medium text-gray-600">Quy trình (Note tư vấn)</label>
-          <textarea value={formData.consultationNote || ''} onChange={e => handleChange('consultationNote', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" rows={3}></textarea>
-        </div>
+        <div><label className="text-sm font-medium text-gray-600">Mô tả</label><textarea value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" rows={2}></textarea></div>
+        <div><label className="text-sm font-medium text-gray-600">Quy trình (Note tư vấn)</label><textarea value={formData.consultationNote || ''} onChange={e => handleChange('consultationNote', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" rows={3}></textarea></div>
         
-        {/* Pricing */}
         <h4 className="text-sm font-bold text-[#D97A7D] border-b border-pink-100 pb-1 mt-4">Bảng Giá Chi Tiết</h4>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div>
-                <label className="text-xs font-medium text-gray-600">Giá bán gốc</label>
-                <input type="number" value={formData.priceOriginal || ''} onChange={e => handleChange('priceOriginal', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm bg-yellow-50 focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
-            <div>
-                <label className="text-xs font-medium text-gray-600">% Giảm</label>
-                <input type="number" value={formData.discountPercent || ''} onChange={e => handleChange('discountPercent', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm text-red-500 font-bold focus:ring-[#E5989B] focus:border-[#E5989B]" placeholder="0" />
-            </div>
-            <div>
-                <label className="text-xs font-medium text-gray-600">Giá KM/Trial</label>
-                <input type="number" value={formData.pricePromo || ''} onChange={e => handleChange('pricePromo', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
-            <div>
-                <label className="text-xs font-medium text-gray-600">5 Tặng 5</label>
-                <input type="number" value={formData.pricePackage5 || ''} onChange={e => handleChange('pricePackage5', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
-            <div>
-                <label className="text-xs font-medium text-gray-600">10 Tặng 15</label>
-                <input type="number" value={formData.pricePackage15 || ''} onChange={e => handleChange('pricePackage15', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
-            
-            {/* New Packages */}
-            <div>
-                <label className="text-xs font-medium text-gray-600">Gói 3 lần</label>
-                <input type="number" value={formData.pricePackage3 || ''} onChange={e => handleChange('pricePackage3', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
-            <div>
-                <label className="text-xs font-medium text-gray-600">Gói 5 lần</label>
-                <input type="number" value={formData.pricePackage5Sessions || ''} onChange={e => handleChange('pricePackage5Sessions', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
-            <div>
-                <label className="text-xs font-medium text-gray-600">Gói 10 lần</label>
-                <input type="number" value={formData.pricePackage10 || ''} onChange={e => handleChange('pricePackage10', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
-            <div>
-                <label className="text-xs font-medium text-gray-600">Gói 20 lần</label>
-                <input type="number" value={formData.pricePackage20 || ''} onChange={e => handleChange('pricePackage20', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
-            </div>
+            <div><label className="text-xs font-medium text-gray-600">Giá bán gốc</label><input type="number" value={formData.priceOriginal || ''} onChange={e => handleChange('priceOriginal', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm bg-yellow-50 focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
+            <div><label className="text-xs font-medium text-gray-600">% Giảm</label><input type="number" value={formData.discountPercent || ''} onChange={e => handleChange('discountPercent', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm text-red-500 font-bold focus:ring-[#E5989B] focus:border-[#E5989B]" placeholder="0" /></div>
+            <div><label className="text-xs font-medium text-gray-600">Giá KM/Trial</label><input type="number" value={formData.pricePromo || ''} onChange={e => handleChange('pricePromo', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
+            <div><label className="text-xs font-medium text-gray-600">5 Tặng 5</label><input type="number" value={formData.pricePackage5 || ''} onChange={e => handleChange('pricePackage5', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
+            <div><label className="text-xs font-medium text-gray-600">10 Tặng 15</label><input type="number" value={formData.pricePackage15 || ''} onChange={e => handleChange('pricePackage15', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
+            <div><label className="text-xs font-medium text-gray-600">Gói 3 lần</label><input type="number" value={formData.pricePackage3 || ''} onChange={e => handleChange('pricePackage3', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
+            <div><label className="text-xs font-medium text-gray-600">Gói 5 lần</label><input type="number" value={formData.pricePackage5Sessions || ''} onChange={e => handleChange('pricePackage5Sessions', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
+            <div><label className="text-xs font-medium text-gray-600">Gói 10 lần</label><input type="number" value={formData.pricePackage10 || ''} onChange={e => handleChange('pricePackage10', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
+            <div><label className="text-xs font-medium text-gray-600">Gói 20 lần</label><input type="number" value={formData.pricePackage20 || ''} onChange={e => handleChange('pricePackage20', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" /></div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end pt-4 border-t mt-4">
-            <Button variant="secondary" onClick={onClose} className="mr-2">Hủy</Button>
-            <Button onClick={handleSave}>Lưu thay đổi</Button>
-        </div>
+        <div className="flex justify-end pt-4 border-t mt-4"><Button variant="secondary" onClick={onClose} className="mr-2">Hủy</Button><Button onClick={handleSave}>Lưu thay đổi</Button></div>
       </div>
     </Modal>
   );

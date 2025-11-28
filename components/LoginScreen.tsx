@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Button from './shared/Button';
 
@@ -18,7 +17,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, error }) => {
 
   const JuSpaLogoLarge = () => (
     <div className="flex flex-col items-center text-[#E5989B] mb-8">
-        {/* Logo Icon Removed */}
         <span className="font-serif font-bold text-5xl tracking-wider mt-2 text-[#D97A7D]">JUSpa</span>
         <span className="text-gray-500 font-light mt-2 text-lg">Promotion Manager</span>
     </div>

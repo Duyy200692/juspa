@@ -1,5 +1,7 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query } from "firebase/firestore";
+import { db } from './firebaseConfig';
+
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import ServiceManagement from './components/ServiceManagement';
@@ -11,72 +13,97 @@ import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEF
 
 type View = 'dashboard' | 'services' | 'users';
 
-// --- DATA VERSION CONTROL ---
-// Change this string whenever you want to force an update of default data on users' browsers
-const DATA_VERSION = 'v2.4_package_3_sessions'; 
-
-// Helper to load from local storage
-const loadFromStorage = <T,>(key: string, defaultVal: T): T => {
-  try {
-    const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultVal;
-  } catch (e) {
-    console.error(`Error loading ${key} from storage`, e);
-    return defaultVal;
-  }
-};
-
 const App: React.FC = () => {
-  // --- State Initialization with LocalStorage ---
   const [showLanding, setShowLanding] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   
-  // Initialize state directly from LocalStorage to avoid flash of default content
-  const [users, setUsers] = useState<User[]>(() => loadFromStorage('users', DEFAULT_USERS));
-  const [services, setServices] = useState<Service[]>(() => loadFromStorage('services', DEFAULT_SERVICES));
-  const [promotions, setPromotions] = useState<Promotion[]>(() => loadFromStorage('promotions', DEFAULT_PROMOTIONS));
-  
-  // Session state
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [view, setView] = useState<View>('dashboard');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [loginError, setLoginError] = useState<string>('');
-
-  // --- Persistence Effects & Data Sync ---
   
-  // 1. Check Version and Force Update if needed
+  // --- Firebase Real-time Listener ---
   useEffect(() => {
-      const currentVersion = localStorage.getItem('app_data_version');
-      
-      if (currentVersion !== DATA_VERSION) {
-          console.log("New data version detected. Syncing defaults...");
-          // Force update Services and Users to match the new code
-          setServices(DEFAULT_SERVICES);
-          setUsers(DEFAULT_USERS);
-          // We keep promotions as they might be user-generated data we don't want to lose
-          // unless it's a critical breaking change.
-          
-          localStorage.setItem('app_data_version', DATA_VERSION);
-      }
+    const seedInitialData = async () => {
+        console.log("Checking for initial data...");
+        // Check users
+        const usersSnap = await getDocs(collection(db, 'users'));
+        if (usersSnap.empty) {
+            console.log("No users found. Seeding default users...");
+            const batch = writeBatch(db);
+            DEFAULT_USERS.forEach(user => {
+                const docRef = doc(db, 'users', user.id);
+                batch.set(docRef, user);
+            });
+            await batch.commit();
+        }
+        // Check services
+        const servicesSnap = await getDocs(collection(db, 'services'));
+        if (servicesSnap.empty) {
+            console.log("No services found. Seeding default services...");
+            const batch = writeBatch(db);
+            DEFAULT_SERVICES.forEach(service => {
+                const docRef = doc(db, 'services', service.id);
+                batch.set(docRef, service);
+            });
+            await batch.commit();
+        }
+         // Check promotions
+        const promotionsSnap = await getDocs(collection(db, 'promotions'));
+        if (promotionsSnap.empty) {
+            console.log("No promotions found. Seeding default promotions...");
+            const batch = writeBatch(db);
+            DEFAULT_PROMOTIONS.forEach(promo => {
+                const docRef = doc(db, 'promotions', promo.id);
+                batch.set(docRef, promo);
+            });
+            await batch.commit();
+        }
+    };
+
+    const setupListeners = () => {
+        const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
+            const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+            setUsers(loadedUsers);
+            console.log("Users updated from Firestore:", loadedUsers.length);
+        });
+
+        const unsubServices = onSnapshot(query(collection(db, "services")), (snapshot) => {
+            const loadedServices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Service));
+            setServices(loadedServices.sort((a, b) => (a.category || '').localeCompare(b.category || '')));
+            console.log("Services updated from Firestore:", loadedServices.length);
+        });
+
+        const unsubPromotions = onSnapshot(query(collection(db, "promotions")), (snapshot) => {
+            const loadedPromotions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Promotion));
+            setPromotions(loadedPromotions);
+            console.log("Promotions updated from Firestore:", loadedPromotions.length);
+        });
+        
+        return () => {
+            unsubUsers();
+            unsubServices();
+            unsubPromotions();
+        };
+    };
+
+    seedInitialData().then(() => {
+        const unsubscribe = setupListeners();
+        setIsLoading(false);
+        return unsubscribe;
+    }).catch(error => {
+        console.error("Firebase initialization error:", error);
+        alert("Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra lại cấu hình Firebase và kết nối mạng.");
+        setIsLoading(false);
+    });
+
   }, []);
-
-  // 2. Save changes to storage
-  useEffect(() => {
-    localStorage.setItem('users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('services', JSON.stringify(services));
-  }, [services]);
-
-  useEffect(() => {
-    localStorage.setItem('promotions', JSON.stringify(promotions));
-  }, [promotions]);
-
 
   // --- Computed Values ---
   const activePromotions = useMemo(() => {
     const now = new Date();
-    // Show ALL Approved promotions that haven't ended yet (Current + Future)
     return promotions.filter(p => 
       p.status === 'Approved' && 
       new Date(p.endDate) >= now
@@ -85,7 +112,6 @@ const App: React.FC = () => {
 
   const proposalPromotions = useMemo(() => {
     const now = new Date();
-    // Show proposals that are NOT approved, OR approved ones that have already ended (past history)
     return promotions.filter(p => 
         p.status !== 'Approved' || 
         new Date(p.endDate) < now
@@ -99,21 +125,7 @@ const App: React.FC = () => {
           setLoggedInUser(user);
           setLoginError('');
       } else {
-          // Fallback for seed users in case storage is weird
-          const seedUser = DEFAULT_USERS.find(u => u.username === username && u.password === password);
-          if (seedUser) {
-             setLoggedInUser(seedUser);
-             setLoginError('');
-             // Silently update users list if seed user was missing from storage
-             setUsers(prev => {
-                 if (!prev.find(u => u.id === seedUser.id)) {
-                     return [...prev, seedUser];
-                 }
-                 return prev;
-             });
-          } else {
-             setLoginError('Tên đăng nhập hoặc mật khẩu không đúng.');
-          }
+         setLoginError('Tên đăng nhập hoặc mật khẩu không đúng.');
       }
   };
 
@@ -122,84 +134,82 @@ const App: React.FC = () => {
       setView('dashboard');
       setShowLanding(true);
   };
-
+  
   const handleEnterSystem = () => {
       setShowLanding(false);
   };
 
   // --- Role Switching Logic ---
-  const handleSwitchRole = (newRole: Role) => {
-      // Find a user with the requested role
+    const handleSwitchRole = (newRole: Role) => {
       const targetUser = users.find(u => u.role === newRole);
-      
       if (targetUser) {
           setLoggedInUser(targetUser);
-          // If switching away from Management while in 'users' view, go back to dashboard
           if (newRole !== Role.Management && view === 'users') {
               setView('dashboard');
           }
       } else {
-          // Fallback if no user exists for that role (shouldn't happen with default data)
           alert(`Không tìm thấy tài khoản cho vai trò ${newRole}`);
       }
   };
 
   // --- User Profile Updates ---
-  const handleUpdateUserName = (newName: string) => {
+  const handleUpdateUserName = async (newName: string) => {
     if (loggedInUser) {
-        const updatedUser = { ...loggedInUser, name: newName };
-        setLoggedInUser(updatedUser);
-        setUsers(prev => prev.map(u => u.id === loggedInUser.id ? updatedUser : u));
+        const userRef = doc(db, 'users', loggedInUser.id);
+        await updateDoc(userRef, { name: newName });
+        // The real-time listener will update the state automatically
     }
   };
 
-  // --- Actions: Users ---
+  // --- Actions: Users (Firebase) ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
-    const newUser = { ...newUserData, id: `user-${Date.now()}` };
-    setUsers(prev => [...prev, newUser]);
+    const newId = `user-${Date.now()}`;
+    const userRef = doc(db, 'users', newId);
+    await setDoc(userRef, { ...newUserData, id: newId });
   };
-
+  
   const updateUser = async (updatedUser: User) => {
-      setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-      if (loggedInUser && loggedInUser.id === updatedUser.id) {
-          setLoggedInUser(updatedUser);
-      }
+      const userRef = doc(db, 'users', updatedUser.id);
+      await updateDoc(userRef, updatedUser);
   };
 
   const deleteUser = async (userId: string) => {
-      setUsers(prev => prev.filter(u => u.id !== userId));
+      await deleteDoc(doc(db, 'users', userId));
   };
 
-  // --- Actions: Promotions ---
+  // --- Actions: Promotions (Firebase) ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
-    const newPromotion = { ...newPromotionData, id: `promo-${Date.now()}` };
-    setPromotions(prev => [...prev, newPromotion]);
+    const newId = `promo-${Date.now()}`;
+    const promoRef = doc(db, 'promotions', newId);
+    await setDoc(promoRef, { ...newPromotionData, id: newId });
   };
-
+  
   const updatePromotion = async (updatedPromotion: Promotion) => {
-    setPromotions(prev => prev.map(p => p.id === updatedPromotion.id ? updatedPromotion : p));
+    const promoRef = doc(db, 'promotions', updatedPromotion.id);
+    await updateDoc(promoRef, { ...updatedPromotion });
   };
 
-  // --- Actions: Services ---
+  // --- Actions: Services (Firebase) ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
-    const newService = { ...newServiceData, id: `service-${Date.now()}` };
-    setServices(prev => [...prev, newService]);
+    const newId = `service-${Date.now()}`;
+    const serviceRef = doc(db, 'services', newId);
+    await setDoc(serviceRef, { ...newServiceData, id: newId });
   };
-
+  
   const updateService = async (updatedService: Service) => {
-    setServices(prev => prev.map(s => s.id === updatedService.id ? updatedService : s));
+    const serviceRef = doc(db, 'services', updatedService.id);
+    await updateDoc(serviceRef, { ...updatedService });
   };
-
+  
   const deleteService = async (serviceId: string) => {
-    setServices(prev => prev.filter(s => s.id !== serviceId));
+    await deleteDoc(doc(db, 'services', serviceId));
   }
 
   // --- Main Render Flow ---
-
   if (isLoading) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">
-              <p className="font-serif text-xl">Đang tải dữ liệu...</p>
+              <p className="font-serif text-xl animate-pulse">Đang kết nối tới cơ sở dữ liệu...</p>
           </div>
       );
   }

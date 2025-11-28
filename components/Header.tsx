@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, Role } from '../types';
 import EditUserModal from './EditUserModal';
@@ -14,11 +13,8 @@ interface HeaderProps {
 
 const JuSpaLogo: React.FC = () => (
     <div className="flex flex-col items-center text-[#E5989B]">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[#D97A7D]">
-            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12 2C14 4 15 7 14 9C13 11 11 12 10 11C9 10 8.5 7.5 9.5 5.5C10.5 3.5 12 2 12 2Z" stroke="currentColor" strokeWidth="2"/>
-        </svg>
-        <span className="font-serif font-bold text-xl tracking-wider mt-1">JUSpa</span>
+        {/* Removed Star SVG */}
+        <span className="font-serif font-bold text-2xl tracking-wider text-[#D97A7D]">JUSpa</span>
     </div>
 );
 

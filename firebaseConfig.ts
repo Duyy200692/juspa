@@ -1,15 +1,18 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// --- QUAN TRỌNG: Đảm bảo các giá trị này đúng với Firebase Console của bạn ---
+// --- QUAN TRỌNG: Hãy đảm bảo các giá trị này đúng với Firebase Console của bạn ---
+// Bạn có thể lấy các giá trị này từ:
+// Firebase Console -> Project Settings (bánh răng) -> General -> Your apps -> Web app -> SDK setup and configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAS9G31URd2WN3qzOy74IMr8qH0VItjgB00",
   authDomain: "juspa-manager.firebaseapp.com",
   projectId: "juspa-manager",
-  storageBucket: "juspa-manager.firebasestorage.app",
+  storageBucket: "juspa-manager.appspot.com",
   messagingSenderId: "457281875952",
   appId: "1:457281875952:web:504941230227ba7a007735"
 };
+
 // Khởi tạo Firebase
 const app = initializeApp(firebaseConfig);
 
