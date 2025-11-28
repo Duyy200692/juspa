@@ -24,11 +24,18 @@ export interface Service {
   category?: string; // Danh mục dịch vụ (VD: RF, Hydrafacial...)
   consultationNote?: string; // Quy trình / Các bước thực hiện
   
-  // New Pricing Structure
+  // Pricing Structure
   priceOriginal: number;    // Giá bán gốc
+  discountPercent?: number; // Cột Giảm (%) để note
   pricePromo: number;       // Giá KM/Trial
-  pricePackage5: number;    // Giảm-5 tặng 5 (Price for this package)
-  pricePackage15: number;   // 10 tặng 15 (Price for this package)
+  pricePackage5: number;    // Giảm-5 tặng 5 (Promotion Package)
+  pricePackage15: number;   // 10 tặng 15 (Promotion Package)
+  
+  // Session Packages
+  pricePackage2: number;        // Gói 2 lần
+  pricePackage5Sessions: number; // Gói 5 lần (Distinct from Buy 5 Get 5)
+  pricePackage10: number;       // Gói 10 lần
+  pricePackage20: number;       // Gói 20 lần
 }
 
 export enum PromotionStatus {

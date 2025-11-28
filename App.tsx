@@ -13,7 +13,7 @@ type View = 'dashboard' | 'services' | 'users';
 
 // --- DATA VERSION CONTROL ---
 // Change this string whenever you want to force an update of default data on users' browsers
-const DATA_VERSION = 'v2.1_product_update_rf_services'; 
+const DATA_VERSION = 'v2.3_added_discount_percent_column'; 
 
 // Helper to load from local storage
 const loadFromStorage = <T,>(key: string, defaultVal: T): T => {

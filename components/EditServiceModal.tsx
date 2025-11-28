@@ -23,7 +23,19 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({ isOpen, onClose, se
   if (!service) return null;
 
   const handleChange = (field: keyof Service, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+        const updated = { ...prev, [field]: value };
+        
+        // Auto calculate promo price if discount or original price changes
+        if ((field === 'priceOriginal' || field === 'discountPercent') && updated.priceOriginal) {
+            const discount = Number(updated.discountPercent) || 0;
+            const original = Number(updated.priceOriginal) || 0;
+            if (discount > 0) {
+                updated.pricePromo = original * (1 - discount / 100);
+            }
+        }
+        return updated;
+    });
   };
 
   const handleSave = () => {
@@ -50,7 +62,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({ isOpen, onClose, se
                 className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" 
                 placeholder="VD: RF, Triệt lông..."
               />
-              {/* Note: This datalist is static here, but in a real app could be passed down as prop */}
               <datalist id="edit-categories-list">
                   <option value="Công nghệ RF" />
                   <option value="Hydrafacial" />
@@ -73,27 +84,50 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({ isOpen, onClose, se
         </div>
         
         {/* Pricing */}
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+        <h4 className="text-sm font-bold text-[#D97A7D] border-b border-pink-100 pb-1 mt-4">Bảng Giá Chi Tiết</h4>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-                <label className="text-sm font-medium text-gray-600">Giá bán gốc</label>
-                <input type="number" value={formData.priceOriginal || 0} onChange={e => handleChange('priceOriginal', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+                <label className="text-xs font-medium text-gray-600">Giá bán gốc</label>
+                <input type="number" value={formData.priceOriginal || 0} onChange={e => handleChange('priceOriginal', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm bg-yellow-50 focus:ring-[#E5989B] focus:border-[#E5989B]" />
             </div>
             <div>
-                <label className="text-sm font-medium text-gray-600">Giá KM/Trial</label>
+                <label className="text-xs font-medium text-gray-600">% Giảm</label>
+                <input type="number" value={formData.discountPercent || ''} onChange={e => handleChange('discountPercent', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm text-red-500 font-bold focus:ring-[#E5989B] focus:border-[#E5989B]" placeholder="0" />
+            </div>
+            <div>
+                <label className="text-xs font-medium text-gray-600">Giá KM/Trial</label>
                 <input type="number" value={formData.pricePromo || 0} onChange={e => handleChange('pricePromo', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
             </div>
             <div>
-                <label className="text-sm font-medium text-gray-600">Giảm 5 Tặng 5</label>
+                <label className="text-xs font-medium text-gray-600">Giảm -5 Tặng 5</label>
                 <input type="number" value={formData.pricePackage5 || 0} onChange={e => handleChange('pricePackage5', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
             </div>
             <div>
-                <label className="text-sm font-medium text-gray-600">10 Tặng 15</label>
+                <label className="text-xs font-medium text-gray-600">10 Tặng 15</label>
                 <input type="number" value={formData.pricePackage15 || 0} onChange={e => handleChange('pricePackage15', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+            </div>
+            
+            {/* New Packages */}
+            <div>
+                <label className="text-xs font-medium text-gray-600">Gói 2 lần</label>
+                <input type="number" value={formData.pricePackage2 || 0} onChange={e => handleChange('pricePackage2', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+            </div>
+            <div>
+                <label className="text-xs font-medium text-gray-600">Gói 5 lần</label>
+                <input type="number" value={formData.pricePackage5Sessions || 0} onChange={e => handleChange('pricePackage5Sessions', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+            </div>
+            <div>
+                <label className="text-xs font-medium text-gray-600">Gói 10 lần</label>
+                <input type="number" value={formData.pricePackage10 || 0} onChange={e => handleChange('pricePackage10', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+            </div>
+            <div>
+                <label className="text-xs font-medium text-gray-600">Gói 20 lần</label>
+                <input type="number" value={formData.pricePackage20 || 0} onChange={e => handleChange('pricePackage20', Number(e.target.value))} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
             </div>
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end pt-4 border-t mt-4">
             <Button variant="secondary" onClick={onClose} className="mr-2">Hủy</Button>
             <Button onClick={handleSave}>Lưu thay đổi</Button>
         </div>
