@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Service, ServiceType } from '../types';
 import Button from './shared/Button';
-import EditServiceModal from './EditServiceModal'; // Import the new modal
+import EditServiceModal from './EditServiceModal';
+import CategoryManagerModal from './CategoryManagerModal'; // New Import
 
 interface ServiceManagementProps {
     services: Service[];
@@ -16,10 +18,12 @@ const formatCurrency = (value: number) => {
 
 const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddService, onUpdateService, onDeleteService }) => {
     const [activeTab, setActiveTab] = useState<ServiceType>('single');
-    const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null); // New state for modal
+    const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null);
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false); // State for category modal
     
     const [newService, setNewService] = useState<Omit<Service, 'id'>>({
         name: '',
+        category: '',
         description: '',
         type: 'single',
         consultationNote: '',
@@ -29,8 +33,25 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         pricePackage15: 0,
     });
 
-    // Filter services based on active tab
-    const displayedServices = services.filter(s => s.type === activeTab);
+    // Get unique categories for datalist and manager
+    const existingCategories = useMemo(() => {
+        const cats = new Set(services.map(s => s.category).filter(Boolean) as string[]);
+        return Array.from(cats).sort();
+    }, [services]);
+
+    // Group services by category
+    const groupedServices = useMemo(() => {
+        const filtered = services.filter(s => s.type === activeTab);
+        const groups: Record<string, Service[]> = {};
+        
+        filtered.forEach(service => {
+            const cat = service.category || 'Khác';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(service);
+        });
+        
+        return groups;
+    }, [services, activeTab]);
     
     const handleNewServiceChange = (field: keyof Omit<Service, 'id'>, value: string | number) => {
         setNewService(prev => ({ ...prev, [field]: value }));
@@ -39,9 +60,10 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
     const handleAddNewService = (e: React.FormEvent) => {
         e.preventDefault();
         if (newService.name && newService.priceOriginal > 0) {
-            onAddService({ ...newService, type: activeTab }); // Ensure type matches current tab
+            onAddService({ ...newService, type: activeTab });
             setNewService({ 
                 name: '', 
+                category: '',
                 description: '', 
                 type: activeTab,
                 consultationNote: '',
@@ -57,7 +79,14 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
     
     const handleModalSave = (updatedService: Service) => {
         onUpdateService(updatedService);
-        setServiceToEdit(null); // Close the modal
+        setServiceToEdit(null);
+    };
+
+    // Logic to rename category for all services
+    const handleUpdateCategoryName = (oldName: string, newName: string) => {
+        services.filter(s => s.category === oldName).forEach(service => {
+            onUpdateService({ ...service, category: newName });
+        });
     };
 
     const TabButton = ({ type, label }: { type: ServiceType; label: string }) => (
@@ -98,27 +127,38 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {displayedServices.map(service => (
-                                    <tr key={service.id}>
-                                        {/* Simplified view-only row */}
-                                        <td className="py-4 px-4 sticky left-0 bg-white z-10 shadow-sm md:shadow-none">
-                                            <p className="font-medium text-gray-900 whitespace-normal text-sm">{service.name}</p>
-                                            <p className="text-xs text-gray-500 whitespace-normal line-clamp-1">{service.description}</p>
-                                            {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
-                                        </td>
-                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.priceOriginal)}</td>
-                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo)}</td>
-                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage5)}</td>
-                                        <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage15)}</td>
-                                        <td className="py-4 px-4 text-center">
-                                             <div className="flex flex-col gap-1 items-center">
-                                                <Button variant="secondary" onClick={() => setServiceToEdit(service)} className="text-[10px] py-1 px-2 w-full">Sửa</Button>
-                                                <Button variant="danger" onClick={() => window.confirm(`Xóa dịch vụ ${service.name}?`) && onDeleteService(service.id)} className="text-[10px] py-1 px-2 w-full">Xóa</Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {displayedServices.length === 0 && (
+                                {Object.entries(groupedServices).length > 0 ? (
+                                    Object.entries(groupedServices).map(([category, items]) => (
+                                        <React.Fragment key={category}>
+                                            {/* Category Header Row */}
+                                            <tr className="bg-pink-50">
+                                                <td colSpan={6} className="py-2 px-4 font-bold text-[#D97A7D] text-sm uppercase tracking-wide sticky left-0 bg-pink-50 z-10">
+                                                    {category}
+                                                </td>
+                                            </tr>
+                                            {/* Service Items */}
+                                            {items.map(service => (
+                                                <tr key={service.id} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="py-4 px-4 sticky left-0 bg-white z-10 shadow-sm md:shadow-none pl-8 border-l-4 border-transparent hover:border-pink-200">
+                                                        <p className="font-medium text-gray-900 whitespace-normal text-sm">{service.name}</p>
+                                                        <p className="text-xs text-gray-500 whitespace-normal line-clamp-1">{service.description}</p>
+                                                        {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.priceOriginal)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage5)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePackage15)}</td>
+                                                    <td className="py-4 px-4 text-center">
+                                                         <div className="flex flex-col gap-1 items-center">
+                                                            <Button variant="secondary" onClick={() => setServiceToEdit(service)} className="text-[10px] py-1 px-2 w-full">Sửa</Button>
+                                                            <Button variant="danger" onClick={() => window.confirm(`Xóa dịch vụ ${service.name}?`) && onDeleteService(service.id)} className="text-[10px] py-1 px-2 w-full">Xóa</Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
+                                    ))
+                                ) : (
                                     <tr>
                                         <td colSpan={6} className="text-center py-8 text-gray-400">Chưa có dữ liệu cho mục này.</td>
                                     </tr>
@@ -130,16 +170,51 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
             </div>
             
             {/* Add New Service Form */}
-            <div className="bg-white p-6 rounded-lg shadow-md border border-pink-100">
-                 <h3 className="text-xl font-serif font-bold text-[#D97A7D] mb-4">
-                     Thêm Mới ({activeTab === 'single' ? 'Gói Lẻ' : 'Gói Combo'})
-                 </h3>
+            <div className="bg-white p-6 rounded-lg shadow-md border border-pink-100 relative">
+                 <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-serif font-bold text-[#D97A7D]">
+                        Thêm Mới ({activeTab === 'single' ? 'Gói Lẻ' : 'Gói Combo'})
+                    </h3>
+                    
+                    {/* Category Manager Button */}
+                    <button 
+                        onClick={() => setIsCategoryModalOpen(true)}
+                        className="text-xs flex items-center gap-1 text-gray-500 hover:text-[#D97A7D] bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
+                        type="button"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Quản lý Danh mục
+                    </button>
+                 </div>
+
                  <form onSubmit={handleAddNewService} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
                     <div className="lg:col-span-2">
                         <label className="block text-xs font-medium text-gray-700">Tên Dịch vụ</label>
                         <input type="text" value={newService.name} onChange={e => handleNewServiceChange('name', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" required placeholder="Nhập tên..."/>
                     </div>
-                     <div>
+                    
+                    {/* Category Input with Datalist */}
+                    <div className="lg:col-span-2">
+                        <label className="block text-xs font-medium text-gray-700">Danh mục (Category)</label>
+                        <input 
+                            type="text" 
+                            list="categories-list"
+                            value={newService.category || ''} 
+                            onChange={e => handleNewServiceChange('category', e.target.value)} 
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" 
+                            placeholder="VD: RF, Hydrafacial..."
+                        />
+                        <datalist id="categories-list">
+                            {existingCategories.map((cat, idx) => (
+                                <option key={idx} value={cat} />
+                            ))}
+                        </datalist>
+                    </div>
+
+                     <div className="lg:col-span-2">
                         <label className="block text-xs font-medium text-gray-700">Giá bán gốc</label>
                         <input type="number" value={newService.priceOriginal} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" required/>
                     </div>
@@ -160,7 +235,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                          <textarea value={newService.description} onChange={e => handleNewServiceChange('description', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="Mô tả ngắn..."></textarea>
                     </div>
                      <div className="md:col-span-2 lg:col-span-2">
-                         <label className="block text-xs font-medium text-gray-700">Quy trình / Các bước (Dành cho Lễ tân/MKT)</label>
+                         <label className="block text-xs font-medium text-gray-700">Quy trình (Dành cho Lễ tân/MKT)</label>
                          <textarea value={newService.consultationNote || ''} onChange={e => handleNewServiceChange('consultationNote', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="VD: Bước 1 tẩy trang..."></textarea>
                     </div>
                     <div className="lg:col-span-1">
@@ -169,12 +244,20 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                  </form>
             </div>
             
-            {/* Render the modal */}
+            {/* Edit Service Modal */}
             <EditServiceModal
                 isOpen={!!serviceToEdit}
                 onClose={() => setServiceToEdit(null)}
                 service={serviceToEdit}
                 onUpdateService={handleModalSave}
+            />
+
+            {/* Category Manager Modal */}
+            <CategoryManagerModal 
+                isOpen={isCategoryModalOpen}
+                onClose={() => setIsCategoryModalOpen(false)}
+                categories={existingCategories}
+                onUpdateCategory={handleUpdateCategoryName}
             />
         </div>
     );

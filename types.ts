@@ -21,6 +21,7 @@ export interface Service {
   name: string;
   description: string;
   type: ServiceType;
+  category?: string; // Danh mục dịch vụ (VD: RF, Hydrafacial...)
   consultationNote?: string; // Quy trình / Các bước thực hiện
   
   // New Pricing Structure

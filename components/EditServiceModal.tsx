@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
@@ -33,11 +34,35 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({ isOpen, onClose, se
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Chỉnh sửa: ${service.name}`}>
       <div className="space-y-4">
-        {/* Name & Desc */}
-        <div>
-          <label className="text-sm font-medium text-gray-600">Tên Dịch vụ</label>
-          <input type="text" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+        {/* Name & Category */}
+        <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-600">Tên Dịch vụ</label>
+              <input type="text" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-600">Danh mục (Category)</label>
+              <input 
+                type="text" 
+                list="edit-categories-list"
+                value={formData.category || ''} 
+                onChange={e => handleChange('category', e.target.value)} 
+                className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" 
+                placeholder="VD: RF, Triệt lông..."
+              />
+              {/* Note: This datalist is static here, but in a real app could be passed down as prop */}
+              <datalist id="edit-categories-list">
+                  <option value="Công nghệ RF" />
+                  <option value="Hydrafacial" />
+                  <option value="GeneoX Pro" />
+                  <option value="Triệt Lông" />
+                  <option value="Chăm sóc da" />
+                  <option value="Thư giãn" />
+                  <option value="Combo Đặc Biệt" />
+              </datalist>
+            </div>
         </div>
+
         <div>
           <label className="text-sm font-medium text-gray-600">Mô tả</label>
           <textarea value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="w-full border-gray-300 rounded-md p-2 mt-1 shadow-sm focus:ring-[#E5989B] focus:border-[#E5989B]" rows={2}></textarea>

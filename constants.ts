@@ -1,3 +1,4 @@
+
 import { User, Service, Promotion, Role, PromotionStatus } from './types';
 
 // Default users representing the 4 roles
@@ -9,9 +10,10 @@ export const USERS: User[] = [
 ];
 
 // Helper to create mock pricing
-const createService = (id: string, name: string, desc: string, basePrice: number, note: string = '', type: 'single' | 'combo' = 'single'): Service => ({
+const createService = (id: string, name: string, category: string, desc: string, basePrice: number, note: string = '', type: 'single' | 'combo' = 'single'): Service => ({
     id,
     name,
+    category,
     description: desc,
     type,
     consultationNote: note,
@@ -26,55 +28,55 @@ const createService = (id: string, name: string, desc: string, basePrice: number
 // DATA FROM USER'S SPREADSHEET IMAGE
 export const SERVICES: Service[] = [
   // Combo RF + Hydrafacial
-  createService('combo-rf-h-classic', 'RF + Hydrafacial (classic)', '', 6500000, '', 'combo'),
-  createService('combo-rf-h-sysnature', 'RF + Hydrafacial (sysnature)', '', 7600000, '', 'combo'),
-  createService('combo-rf-h-platinum', 'RF + Hydrafacial (platinum)', '', 9600000, '', 'combo'),
+  createService('combo-rf-h-classic', 'RF + Hydrafacial (classic)', 'Combo Đặc Biệt', '', 6500000, '', 'combo'),
+  createService('combo-rf-h-sysnature', 'RF + Hydrafacial (sysnature)', 'Combo Đặc Biệt', '', 7600000, '', 'combo'),
+  createService('combo-rf-h-platinum', 'RF + Hydrafacial (platinum)', 'Combo Đặc Biệt', '', 9600000, '', 'combo'),
   
   // RF
-  createService('rf-mat-matnong', 'RF mặt - mắt/nọng', 'Thời lượng 30 phút', 4500000),
-  createService('rf-c+', 'C+', '15 phút', 900000),
-  createService('rf-add-vitamin', 'Add Vitamin', '15 phút', 900000),
-  createService('rf-mat', 'Mặt', '30 phút', 3900000),
-  createService('rf-nong', 'Nọng', '15 phút', 1800000),
-  createService('rf-mat-2', 'Mắt', '10 phút', 1500000),
-  createService('rf-bap-tay', 'Bắp tay', '30 phút', 2500000),
-  createService('rf-dui', 'Đùi', '40 phút', 3000000),
-  createService('rf-bap-chuoi', 'Bắp chuối', '30 phút', 3000000),
-  createService('rf-bung', 'Bụng', '30 phút', 3500000),
-  createService('rf-that-lung-eo', 'Thắt lưng + Eo', '30 phút', 3000000),
+  createService('rf-mat-matnong', 'RF mặt - mắt/nọng', 'Công nghệ RF', 'Thời lượng 30 phút', 4500000),
+  createService('rf-c+', 'C+', 'Công nghệ RF', '15 phút', 900000),
+  createService('rf-add-vitamin', 'Add Vitamin', 'Công nghệ RF', '15 phút', 900000),
+  createService('rf-mat', 'Mặt', 'Công nghệ RF', '30 phút', 3900000),
+  createService('rf-nong', 'Nọng', 'Công nghệ RF', '15 phút', 1800000),
+  createService('rf-mat-2', 'Mắt', 'Công nghệ RF', '10 phút', 1500000),
+  createService('rf-bap-tay', 'Bắp tay', 'Công nghệ RF', '30 phút', 2500000),
+  createService('rf-dui', 'Đùi', 'Công nghệ RF', '40 phút', 3000000),
+  createService('rf-bap-chuoi', 'Bắp chuối', 'Công nghệ RF', '30 phút', 3000000),
+  createService('rf-bung', 'Bụng', 'Công nghệ RF', '30 phút', 3500000),
+  createService('rf-that-lung-eo', 'Thắt lưng + Eo', 'Công nghệ RF', '30 phút', 3000000),
   
   // Hydrafacial
-  createService('hf-classic', 'Classic', '90 phút', 4600000),
-  createService('hf-sysnature', 'Sysnature', '105 phút', 5600000),
-  createService('hf-platinum', 'Platinum', '120 phút', 8900000),
-  createService('hf-body-lung', 'Body lưng', '45 phút', 5800000),
-  createService('hf-body-nguc', 'Body ngực', '45 phút', 5000000),
-  createService('hf-3-vung-body', '3 vùng body', '90 phút', 8000000),
+  createService('hf-classic', 'Classic', 'Hydrafacial', '90 phút', 4600000),
+  createService('hf-sysnature', 'Sysnature', 'Hydrafacial', '105 phút', 5600000),
+  createService('hf-platinum', 'Platinum', 'Hydrafacial', '120 phút', 8900000),
+  createService('hf-body-lung', 'Body lưng', 'Hydrafacial', '45 phút', 5800000),
+  createService('hf-body-nguc', 'Body ngực', 'Hydrafacial', '45 phút', 5000000),
+  createService('hf-3-vung-body', '3 vùng body', 'Hydrafacial', '90 phút', 8000000),
   
   // GeneoX Pro
-  createService('geneo-rf', 'KO RF', '60 phút', 4500000),
-  createService('geneo-acid-neck', 'Acid Neck', '30 phút', 1200000),
+  createService('geneo-rf', 'KO RF', 'GeneoX Pro', '60 phút', 4500000),
+  createService('geneo-acid-neck', 'Acid Neck', 'GeneoX Pro', '30 phút', 1200000),
   
   // Triệt Lông (từ dữ liệu cũ, giá đã được chuẩn hóa)
-  createService('hr-1', 'Mép trên', 'Triệt lông vùng mép trên', 750000, '1. Cạo lông\n2. Bôi Gel lạnh\n3. Bắn laser\n4. Dưỡng da'),
-  createService('hr-2', 'Nách/Trán/Cằm', 'Triệt lông vùng nách, trán, hoặc cằm', 950000),
-  createService('hr-3', '1/2 Tay', 'Triệt lông 1/2 cánh tay', 1200000),
-  createService('hr-4', '1/2 Chân', 'Triệt lông 1/2 chân', 1500000),
-  createService('hr-5', 'Toàn mặt', 'Triệt lông toàn bộ mặt', 1800000),
-  createService('hr-6', 'Ngực/Bụng', 'Triệt lông vùng ngực hoặc bụng', 1800000),
-  createService('hr-7', 'Full tay', 'Triệt lông toàn bộ cánh tay', 1800000),
-  createService('hr-8', 'Full chân', 'Triệt lông toàn bộ chân', 2000000),
-  createService('hr-9', 'Bikini/Tạo hình', 'Triệt lông và tạo hình vùng bikini', 1800000),
-  createService('hr-10', 'Lưng', 'Triệt lông vùng lưng', 2400000),
-  createService('hr-11', 'Tay + Chân + Nách', 'Combo triệt lông tay, chân, và nách', 4200000, '', 'combo'),
-  createService('hr-12', 'Tay + Chân + Mặt', 'Combo triệt lông tay, chân, và mặt', 4800000, '', 'combo'),
-  createService('hr-13', 'Tay + Chân + Bi', 'Combo triệt lông tay, chân, và bikini', 4800000, '', 'combo'),
-  createService('hr-14', 'Toàn thân', 'Triệt lông toàn thân', 9600000, '', 'combo'),
+  createService('hr-1', 'Mép trên', 'Triệt Lông', 'Triệt lông vùng mép trên', 750000, '1. Cạo lông\n2. Bôi Gel lạnh\n3. Bắn laser\n4. Dưỡng da'),
+  createService('hr-2', 'Nách/Trán/Cằm', 'Triệt Lông', 'Triệt lông vùng nách, trán, hoặc cằm', 950000),
+  createService('hr-3', '1/2 Tay', 'Triệt Lông', 'Triệt lông 1/2 cánh tay', 1200000),
+  createService('hr-4', '1/2 Chân', 'Triệt Lông', 'Triệt lông 1/2 chân', 1500000),
+  createService('hr-5', 'Toàn mặt', 'Triệt Lông', 'Triệt lông toàn bộ mặt', 1800000),
+  createService('hr-6', 'Ngực/Bụng', 'Triệt Lông', 'Triệt lông vùng ngực hoặc bụng', 1800000),
+  createService('hr-7', 'Full tay', 'Triệt Lông', 'Triệt lông toàn bộ cánh tay', 1800000),
+  createService('hr-8', 'Full chân', 'Triệt Lông', 'Triệt lông toàn bộ chân', 2000000),
+  createService('hr-9', 'Bikini/Tạo hình', 'Triệt Lông', 'Triệt lông và tạo hình vùng bikini', 1800000),
+  createService('hr-10', 'Lưng', 'Triệt Lông', 'Triệt lông vùng lưng', 2400000),
+  createService('hr-11', 'Tay + Chân + Nách', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và nách', 4200000, '', 'combo'),
+  createService('hr-12', 'Tay + Chân + Mặt', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và mặt', 4800000, '', 'combo'),
+  createService('hr-13', 'Tay + Chân + Bi', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và bikini', 4800000, '', 'combo'),
+  createService('hr-14', 'Toàn thân', 'Combo Triệt Lông', 'Triệt lông toàn thân', 9600000, '', 'combo'),
   
   // Dịch vụ cũ khác
-  createService('service-old-3', 'Crystal Skin Therapy', 'Thanh lọc – tái tạo – cấp ẩm đa tầng', 2500000),
-  createService('service-old-4', 'Bliss & Balance 105’', '45’ Relaxing Hair Wash + 60 JU Signature Massage', 800000),
-  createService('service-old-5', 'Oxy Boots', 'Công nghệ bơm oxy áp lực cao', 1800000),
+  createService('service-old-3', 'Crystal Skin Therapy', 'Chăm sóc da', 'Thanh lọc – tái tạo – cấp ẩm đa tầng', 2500000),
+  createService('service-old-4', 'Bliss & Balance 105’', 'Thư giãn', '45’ Relaxing Hair Wash + 60 JU Signature Massage', 800000),
+  createService('service-old-5', 'Oxy Boots', 'Chăm sóc da', 'Công nghệ bơm oxy áp lực cao', 1800000),
 ];
 
 export const PROMOTIONS: Promotion[] = [
