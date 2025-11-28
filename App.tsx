@@ -11,6 +11,10 @@ import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEF
 
 type View = 'dashboard' | 'services' | 'users';
 
+// --- DATA VERSION CONTROL ---
+// Change this string whenever you want to force an update of default data on users' browsers
+const DATA_VERSION = 'v2.1_product_update_rf_services'; 
+
 // Helper to load from local storage
 const loadFromStorage = <T,>(key: string, defaultVal: T): T => {
   try {
@@ -31,13 +35,31 @@ const App: React.FC = () => {
   const [services, setServices] = useState<Service[]>(() => loadFromStorage('services', DEFAULT_SERVICES));
   const [promotions, setPromotions] = useState<Promotion[]>(() => loadFromStorage('promotions', DEFAULT_PROMOTIONS));
   
-  // Session state (not persisted in this example, or could be if desired)
+  // Session state
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [view, setView] = useState<View>('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string>('');
 
-  // --- Persistence Effects ---
+  // --- Persistence Effects & Data Sync ---
+  
+  // 1. Check Version and Force Update if needed
+  useEffect(() => {
+      const currentVersion = localStorage.getItem('app_data_version');
+      
+      if (currentVersion !== DATA_VERSION) {
+          console.log("New data version detected. Syncing defaults...");
+          // Force update Services and Users to match the new code
+          setServices(DEFAULT_SERVICES);
+          setUsers(DEFAULT_USERS);
+          // We keep promotions as they might be user-generated data we don't want to lose
+          // unless it's a critical breaking change.
+          
+          localStorage.setItem('app_data_version', DATA_VERSION);
+      }
+  }, []);
+
+  // 2. Save changes to storage
   useEffect(() => {
     localStorage.setItem('users', JSON.stringify(users));
   }, [users]);
@@ -50,18 +72,11 @@ const App: React.FC = () => {
     localStorage.setItem('promotions', JSON.stringify(promotions));
   }, [promotions]);
 
-  // Auto-seed services if missing (migration for new pricing structure)
-  useEffect(() => {
-     if (services.length < 20) {
-        setServices(DEFAULT_SERVICES);
-     }
-  }, []);
 
   // --- Computed Values ---
   const activePromotions = useMemo(() => {
     const now = new Date();
-    // LOGIC CHANGE: Show ALL Approved promotions that haven't ended yet (Current + Future)
-    // This allows Reception to see upcoming "Tháng 1", "Tháng 2" promotions
+    // Show ALL Approved promotions that haven't ended yet (Current + Future)
     return promotions.filter(p => 
       p.status === 'Approved' && 
       new Date(p.endDate) >= now
@@ -84,11 +99,18 @@ const App: React.FC = () => {
           setLoggedInUser(user);
           setLoginError('');
       } else {
-          // Fallback for seed users
-          const seedUser = users.find(u => u.username === username);
+          // Fallback for seed users in case storage is weird
+          const seedUser = DEFAULT_USERS.find(u => u.username === username && u.password === password);
           if (seedUser) {
              setLoggedInUser(seedUser);
              setLoginError('');
+             // Silently update users list if seed user was missing from storage
+             setUsers(prev => {
+                 if (!prev.find(u => u.id === seedUser.id)) {
+                     return [...prev, seedUser];
+                 }
+                 return prev;
+             });
           } else {
              setLoginError('Tên đăng nhập hoặc mật khẩu không đúng.');
           }
@@ -107,12 +129,18 @@ const App: React.FC = () => {
 
   // --- Role Switching Logic ---
   const handleSwitchRole = (newRole: Role) => {
+      // Find a user with the requested role
       const targetUser = users.find(u => u.role === newRole);
+      
       if (targetUser) {
           setLoggedInUser(targetUser);
+          // If switching away from Management while in 'users' view, go back to dashboard
           if (newRole !== Role.Management && view === 'users') {
               setView('dashboard');
           }
+      } else {
+          // Fallback if no user exists for that role (shouldn't happen with default data)
+          alert(`Không tìm thấy tài khoản cho vai trò ${newRole}`);
       }
   };
 
