@@ -242,7 +242,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
 
                      <div className="lg:col-span-2">
                         <label className="block text-xs font-medium text-gray-700 bg-yellow-50 w-fit px-1 rounded">Giá bán gốc</label>
-                        <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30" required/>
+                        <input type="number" value={newService.priceOriginal} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30" required/>
                     </div>
                     {/* Discount & Promo Price */}
                     <div>
@@ -251,34 +251,34 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                     </div>
                      <div>
                         <label className="block text-xs font-medium text-gray-700">Giá KM/Trial</label>
-                        <input type="number" value={newService.pricePromo || ''} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePromo} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     
                      <div>
                         <label className="block text-xs font-medium text-gray-700">Giảm -5 Tặng 5</label>
-                        <input type="number" value={newService.pricePackage5 || ''} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage5} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                      <div>
                         <label className="block text-xs font-medium text-gray-700">10 Tặng 15</label>
-                        <input type="number" value={newService.pricePackage15 || ''} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage15} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     
                     {/* New Package Inputs */}
                     <div>
                         <label className="block text-xs font-medium text-gray-700">Gói 2 lần</label>
-                        <input type="number" value={newService.pricePackage2 || ''} onChange={e => handleNewServiceChange('pricePackage2', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage2} onChange={e => handleNewServiceChange('pricePackage2', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-700">Gói 5 lần</label>
-                        <input type="number" value={newService.pricePackage5Sessions || ''} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage5Sessions} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-700">Gói 10 lần</label>
-                        <input type="number" value={newService.pricePackage10 || ''} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage10} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-gray-700">Gói 20 lần</label>
-                        <input type="number" value={newService.pricePackage20 || ''} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                        <input type="number" value={newService.pricePackage20} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
                     </div>
 
                     <div className="md:col-span-2 lg:col-span-4">
