@@ -11,14 +11,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
       
       {/* Centered Content */}
       <div className="relative z-10 flex flex-col items-center text-center p-6 animate-fade-in-up">
-          {/* Logo Icon */}
-          <div className="mb-6 text-[#E5989B]">
-             <svg width="100" height="100" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 2C14 4 15 7 14 9C13 11 11 12 10 11C9 10 8.5 7.5 9.5 5.5C10.5 3.5 12 2 12 2Z" stroke="currentColor" strokeWidth="1.5"/>
-            </svg>
-          </div>
-
+          
           {/* Title */}
           <h1 className="font-serif text-6xl md:text-8xl font-bold text-[#5C3A3A] mb-12 tracking-wide">
               JUSpa
