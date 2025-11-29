@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User, Role } from '../types';
 import Button from './shared/Button';
@@ -5,11 +6,11 @@ import Button from './shared/Button';
 interface UserManagementProps {
   users: User[];
   onAddUser: (user: Omit<User, 'id'>) => Promise<void>;
-  onUpdateUser: (user: User) => Promise<void>;
+  // Removed unused onUpdateUser to fix build error
   onDeleteUser: (userId: string) => Promise<void>;
 }
 
-const UserManagement: React.FC<UserManagementProps> = ({ users, onAddUser, onUpdateUser, onDeleteUser }) => {
+const UserManagement: React.FC<UserManagementProps> = ({ users, onAddUser, onDeleteUser }) => {
   const [newUser, setNewUser] = useState({
     name: '',
     username: '',

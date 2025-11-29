@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query } from "firebase/firestore";
 import { db } from './firebaseConfig';
@@ -170,7 +171,8 @@ const App: React.FC = () => {
   
   const updateUser = async (updatedUser: User) => {
       const userRef = doc(db, 'users', updatedUser.id);
-      await updateDoc(userRef, updatedUser);
+      // Fix: Spread the object to match Firestore expected types
+      await updateDoc(userRef, { ...updatedUser });
   };
 
   const deleteUser = async (userId: string) => {
@@ -257,7 +259,6 @@ const App: React.FC = () => {
             <UserManagement 
                 users={users}
                 onAddUser={addUser}
-                onUpdateUser={updateUser}
                 onDeleteUser={deleteUser}
             />
         )}
