@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query } from "firebase/firestore";
 import { db } from './firebaseConfig';
@@ -158,7 +157,6 @@ const App: React.FC = () => {
     if (loggedInUser) {
         const userRef = doc(db, 'users', loggedInUser.id);
         await updateDoc(userRef, { name: newName });
-        // The real-time listener will update the state automatically
     }
   };
 
@@ -171,8 +169,8 @@ const App: React.FC = () => {
   
   const updateUser = async (updatedUser: User) => {
       const userRef = doc(db, 'users', updatedUser.id);
-      // Fix: Spread the object to match Firestore expected types
-      await updateDoc(userRef, { ...updatedUser });
+      // FIX: Cast to any dict to satisfy TypeScript strict checking for Firestore
+      await updateDoc(userRef, { ...updatedUser } as { [key: string]: any });
   };
 
   const deleteUser = async (userId: string) => {
@@ -188,7 +186,7 @@ const App: React.FC = () => {
   
   const updatePromotion = async (updatedPromotion: Promotion) => {
     const promoRef = doc(db, 'promotions', updatedPromotion.id);
-    await updateDoc(promoRef, { ...updatedPromotion });
+    await updateDoc(promoRef, { ...updatedPromotion } as { [key: string]: any });
   };
 
   // --- Actions: Services (Firebase) ---
@@ -200,7 +198,7 @@ const App: React.FC = () => {
   
   const updateService = async (updatedService: Service) => {
     const serviceRef = doc(db, 'services', updatedService.id);
-    await updateDoc(serviceRef, { ...updatedService });
+    await updateDoc(serviceRef, { ...updatedService } as { [key: string]: any });
   };
   
   const deleteService = async (serviceId: string) => {
