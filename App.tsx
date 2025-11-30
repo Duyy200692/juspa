@@ -28,38 +28,42 @@ const App: React.FC = () => {
   useEffect(() => {
     const seedInitialData = async () => {
         console.log("Checking for initial data...");
-        // Check users
-        const usersSnap = await getDocs(collection(db, 'users'));
-        if (usersSnap.empty) {
-            console.log("No users found. Seeding default users...");
-            const batch = writeBatch(db);
-            DEFAULT_USERS.forEach(user => {
-                const docRef = doc(db, 'users', user.id);
-                batch.set(docRef, user);
-            });
-            await batch.commit();
-        }
-        // Check services
-        const servicesSnap = await getDocs(collection(db, 'services'));
-        if (servicesSnap.empty) {
-            console.log("No services found. Seeding default services...");
-            const batch = writeBatch(db);
-            DEFAULT_SERVICES.forEach(service => {
-                const docRef = doc(db, 'services', service.id);
-                batch.set(docRef, service);
-            });
-            await batch.commit();
-        }
-         // Check promotions
-        const promotionsSnap = await getDocs(collection(db, 'promotions'));
-        if (promotionsSnap.empty) {
-            console.log("No promotions found. Seeding default promotions...");
-            const batch = writeBatch(db);
-            DEFAULT_PROMOTIONS.forEach(promo => {
-                const docRef = doc(db, 'promotions', promo.id);
-                batch.set(docRef, promo);
-            });
-            await batch.commit();
+        try {
+            // Check users
+            const usersSnap = await getDocs(collection(db, 'users'));
+            if (usersSnap.empty) {
+                console.log("No users found. Seeding default users...");
+                const batch = writeBatch(db);
+                DEFAULT_USERS.forEach(user => {
+                    const docRef = doc(db, 'users', user.id);
+                    batch.set(docRef, user);
+                });
+                await batch.commit();
+            }
+            // Check services
+            const servicesSnap = await getDocs(collection(db, 'services'));
+            if (servicesSnap.empty) {
+                console.log("No services found. Seeding default services...");
+                const batch = writeBatch(db);
+                DEFAULT_SERVICES.forEach(service => {
+                    const docRef = doc(db, 'services', service.id);
+                    batch.set(docRef, service);
+                });
+                await batch.commit();
+            }
+             // Check promotions
+            const promotionsSnap = await getDocs(collection(db, 'promotions'));
+            if (promotionsSnap.empty) {
+                console.log("No promotions found. Seeding default promotions...");
+                const batch = writeBatch(db);
+                DEFAULT_PROMOTIONS.forEach(promo => {
+                    const docRef = doc(db, 'promotions', promo.id);
+                    batch.set(docRef, promo);
+                });
+                await batch.commit();
+            }
+        } catch (err) {
+            console.error("Error seeding data:", err);
         }
     };
 
@@ -67,19 +71,16 @@ const App: React.FC = () => {
         const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
             const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
             setUsers(loadedUsers);
-            console.log("Users updated from Firestore:", loadedUsers.length);
         });
 
         const unsubServices = onSnapshot(query(collection(db, "services")), (snapshot) => {
             const loadedServices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Service));
             setServices(loadedServices.sort((a, b) => (a.category || '').localeCompare(b.category || '')));
-            console.log("Services updated from Firestore:", loadedServices.length);
         });
 
         const unsubPromotions = onSnapshot(query(collection(db, "promotions")), (snapshot) => {
             const loadedPromotions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Promotion));
             setPromotions(loadedPromotions);
-            console.log("Promotions updated from Firestore:", loadedPromotions.length);
         });
         
         return () => {
