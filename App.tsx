@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query } from "firebase/firestore";
-import { db } from './firebaseConfig';
+import { db, collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query } from './firebaseConfig';
 
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -68,18 +67,18 @@ const App: React.FC = () => {
     };
 
     const setupListeners = () => {
-        const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
-            const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+        const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot: any) => {
+            const loadedUsers = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as User));
             setUsers(loadedUsers);
         });
 
-        const unsubServices = onSnapshot(query(collection(db, "services")), (snapshot) => {
-            const loadedServices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Service));
+        const unsubServices = onSnapshot(query(collection(db, "services")), (snapshot: any) => {
+            const loadedServices = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Service));
             setServices(loadedServices.sort((a, b) => (a.category || '').localeCompare(b.category || '')));
         });
 
-        const unsubPromotions = onSnapshot(query(collection(db, "promotions")), (snapshot) => {
-            const loadedPromotions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Promotion));
+        const unsubPromotions = onSnapshot(query(collection(db, "promotions")), (snapshot: any) => {
+            const loadedPromotions = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Promotion));
             setPromotions(loadedPromotions);
         });
         
@@ -168,11 +167,7 @@ const App: React.FC = () => {
     await setDoc(userRef, { ...newUserData, id: newId });
   };
   
-  const updateUser = async (updatedUser: User) => {
-      const userRef = doc(db, 'users', updatedUser.id);
-      // FIX: Cast to any dict to satisfy TypeScript strict checking for Firestore
-      await updateDoc(userRef, { ...updatedUser } as { [key: string]: any });
-  };
+  // NOTE: Removed unused updateUser function to fix build error TS6133
 
   const deleteUser = async (userId: string) => {
       await deleteDoc(doc(db, 'users', userId));
