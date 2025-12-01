@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { db, collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query } from './firebaseConfig';
+import { db } from './firebaseConfig';
 
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -29,34 +29,34 @@ const App: React.FC = () => {
         console.log("Checking for initial data...");
         try {
             // Check users
-            const usersSnap = await getDocs(collection(db, 'users'));
+            const usersSnap = await db.collection('users').get();
             if (usersSnap.empty) {
                 console.log("No users found. Seeding default users...");
-                const batch = writeBatch(db);
+                const batch = db.batch();
                 DEFAULT_USERS.forEach(user => {
-                    const docRef = doc(db, 'users', user.id);
+                    const docRef = db.collection('users').doc(user.id);
                     batch.set(docRef, user);
                 });
                 await batch.commit();
             }
             // Check services
-            const servicesSnap = await getDocs(collection(db, 'services'));
+            const servicesSnap = await db.collection('services').get();
             if (servicesSnap.empty) {
                 console.log("No services found. Seeding default services...");
-                const batch = writeBatch(db);
+                const batch = db.batch();
                 DEFAULT_SERVICES.forEach(service => {
-                    const docRef = doc(db, 'services', service.id);
+                    const docRef = db.collection('services').doc(service.id);
                     batch.set(docRef, service);
                 });
                 await batch.commit();
             }
              // Check promotions
-            const promotionsSnap = await getDocs(collection(db, 'promotions'));
+            const promotionsSnap = await db.collection('promotions').get();
             if (promotionsSnap.empty) {
                 console.log("No promotions found. Seeding default promotions...");
-                const batch = writeBatch(db);
+                const batch = db.batch();
                 DEFAULT_PROMOTIONS.forEach(promo => {
-                    const docRef = doc(db, 'promotions', promo.id);
+                    const docRef = db.collection('promotions').doc(promo.id);
                     batch.set(docRef, promo);
                 });
                 await batch.commit();
@@ -67,18 +67,18 @@ const App: React.FC = () => {
     };
 
     const setupListeners = () => {
-        const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot: any) => {
-            const loadedUsers = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as User));
+        const unsubUsers = db.collection("users").onSnapshot((snapshot) => {
+            const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
             setUsers(loadedUsers);
         });
 
-        const unsubServices = onSnapshot(query(collection(db, "services")), (snapshot: any) => {
-            const loadedServices = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Service));
+        const unsubServices = db.collection("services").onSnapshot((snapshot) => {
+            const loadedServices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Service));
             setServices(loadedServices.sort((a, b) => (a.category || '').localeCompare(b.category || '')));
         });
 
-        const unsubPromotions = onSnapshot(query(collection(db, "promotions")), (snapshot: any) => {
-            const loadedPromotions = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Promotion));
+        const unsubPromotions = db.collection("promotions").onSnapshot((snapshot) => {
+            const loadedPromotions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Promotion));
             setPromotions(loadedPromotions);
         });
         
@@ -155,50 +155,46 @@ const App: React.FC = () => {
   // --- User Profile Updates ---
   const handleUpdateUserName = async (newName: string) => {
     if (loggedInUser) {
-        const userRef = doc(db, 'users', loggedInUser.id);
-        await updateDoc(userRef, { name: newName });
+        await db.collection('users').doc(loggedInUser.id).update({ name: newName });
     }
   };
 
   // --- Actions: Users (Firebase) ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newId = `user-${Date.now()}`;
-    const userRef = doc(db, 'users', newId);
-    await setDoc(userRef, { ...newUserData, id: newId });
+    await db.collection('users').doc(newId).set({ ...newUserData, id: newId });
   };
   
   // NOTE: Removed unused updateUser function to fix build error TS6133
 
   const deleteUser = async (userId: string) => {
-      await deleteDoc(doc(db, 'users', userId));
+      await db.collection('users').doc(userId).delete();
   };
 
   // --- Actions: Promotions (Firebase) ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
     const newId = `promo-${Date.now()}`;
-    const promoRef = doc(db, 'promotions', newId);
-    await setDoc(promoRef, { ...newPromotionData, id: newId });
+    await db.collection('promotions').doc(newId).set({ ...newPromotionData, id: newId });
   };
   
   const updatePromotion = async (updatedPromotion: Promotion) => {
-    const promoRef = doc(db, 'promotions', updatedPromotion.id);
-    await updateDoc(promoRef, { ...updatedPromotion } as { [key: string]: any });
+    // FIX: Force cast to satisfy TypeScript strict checking
+    await db.collection('promotions').doc(updatedPromotion.id).update({ ...updatedPromotion } as any);
   };
 
   // --- Actions: Services (Firebase) ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
     const newId = `service-${Date.now()}`;
-    const serviceRef = doc(db, 'services', newId);
-    await setDoc(serviceRef, { ...newServiceData, id: newId });
+    await db.collection('services').doc(newId).set({ ...newServiceData, id: newId });
   };
   
   const updateService = async (updatedService: Service) => {
-    const serviceRef = doc(db, 'services', updatedService.id);
-    await updateDoc(serviceRef, { ...updatedService } as { [key: string]: any });
+    // FIX: Force cast to satisfy TypeScript strict checking
+    await db.collection('services').doc(updatedService.id).update({ ...updatedService } as any);
   };
   
   const deleteService = async (serviceId: string) => {
-    await deleteDoc(doc(db, 'services', serviceId));
+    await db.collection('services').doc(serviceId).delete();
   }
 
   // --- Main Render Flow ---
