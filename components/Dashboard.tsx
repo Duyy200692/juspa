@@ -70,14 +70,35 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
     return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
   }
 
-  // Helper to check expiry for table row
-  const getDaysLeft = (endDate: string) => {
+  // Helper to get time-based status for table row
+  const getTimeBadge = (startDate: string, endDate: string, status: PromotionStatus) => {
+      if (status !== PromotionStatus.Approved) return null;
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(0, 0, 0, 0);
+
+      if (start > today) {
+          const diffTime = start.getTime() - today.getTime();
+          const daysToStart = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200" title={`Bắt đầu sau ${daysToStart} ngày`}>📅 Sắp chạy</span>;
+      }
+
       const diffTime = end.getTime() - today.getTime();
-      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (daysLeft >= 0 && daysLeft <= 3) {
+          return <span className="ml-2 text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded border border-orange-200 animate-pulse" title={`Còn ${daysLeft} ngày`}>⚠️ Sắp hết hạn</span>;
+      }
+      
+      if (daysLeft >= 0) {
+           return <span className="ml-2 text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded border border-green-200">🔥 Đang chạy</span>;
+      }
+
+      return <span className="ml-2 text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200">Đã kết thúc</span>;
   };
 
   return (
@@ -91,6 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                 key={promo.id}
                 title={promo.name}
                 subtitle={`Valid from ${promo.startDate} to ${promo.endDate}`}
+                startDate={promo.startDate}
                 endDate={promo.endDate}
                 services={promo.services}
                 canEdit={isManagement}
@@ -133,17 +155,13 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                   {proposalPromotions.map(promo => {
                     const isOwner = promo.proposerId === loggedInUser.id;
                     const canEdit = loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign;
-                    // Logic: Management can delete anything. Product can delete only their own Pending Design proposals.
                     const canDelete = loggedInUser.role === Role.Management || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
                     
-                    const daysLeft = getDaysLeft(promo.endDate);
-                    const isExpiring = daysLeft >= 0 && daysLeft <= 3 && promo.status === PromotionStatus.Approved;
-
                     return (
                       <tr key={promo.id} className="hover:bg-gray-50">
-                        <td className="py-4 px-6 font-medium text-gray-900">
+                        <td className="py-4 px-6 font-medium text-gray-900 flex items-center">
                             {promo.name}
-                            {isExpiring && <span className="ml-2 text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded border border-orange-200" title="Sắp hết hạn">⚠️</span>}
+                            {getTimeBadge(promo.startDate, promo.endDate, promo.status)}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-500">{getMonthFromDate(promo.startDate)}</td>
                         <td className="py-4 px-6 text-sm text-gray-500">{promo.startDate} - {promo.endDate}</td>

@@ -5,8 +5,9 @@ import Button from './shared/Button';
 
 interface PromotionCardProps {
   title: string;
-  subtitle: string; // "Valid from... to..."
-  endDate: string; // Need raw date to calculate expiry
+  subtitle: string;
+  startDate: string; // Added startDate to calculate "Upcoming" status
+  endDate: string;
   services: PromotionService[];
   onEdit?: () => void;
   onView?: () => void;
@@ -18,44 +19,68 @@ const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat('vi-VN').format(value);
 };
 
-const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, endDate, services, onEdit, onView, canEdit }) => {
+const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDate, endDate, services, onEdit, onView, canEdit }) => {
   
-  // Logic to check expiry
-  const getExpiryWarning = () => {
+  // Logic to determine time-based status
+  const getTimeStatus = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      
       const end = new Date(endDate);
       end.setHours(0, 0, 0, 0);
       
-      const diffTime = end.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays >= 0 && diffDays <= 3) {
-          return { isExpiring: true, daysLeft: diffDays };
+      // Case 1: Upcoming (Sắp chạy)
+      if (start > today) {
+          const diffTime = start.getTime() - today.getTime();
+          const daysToStart = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          return { 
+              label: `📅 Sắp chạy (còn ${daysToStart} ngày)`, 
+              colorClass: 'bg-blue-100 text-blue-700 border-blue-200',
+              borderColor: 'border-blue-200 ring-1 ring-blue-100'
+          };
       }
-      return { isExpiring: false, daysLeft: 0 };
+
+      // Case 2: Expiring Soon (Sắp hết hạn)
+      const diffTime = end.getTime() - today.getTime();
+      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (daysLeft >= 0 && daysLeft <= 3) {
+          return { 
+              label: `⚠️ Sắp hết hạn: Còn ${daysLeft === 0 ? 'hôm nay' : `${daysLeft} ngày`}`, 
+              colorClass: 'bg-orange-100 text-orange-700 border-orange-200 animate-pulse',
+              borderColor: 'border-orange-300 ring-1 ring-orange-200'
+          };
+      }
+
+      // Case 3: Running (Đang chạy bình thường)
+      return { 
+          label: '🔥 Đang chạy', 
+          colorClass: 'bg-green-100 text-green-700 border-green-200',
+          borderColor: 'border-pink-100 hover:scale-[1.01]' 
+      };
   };
 
-  const { isExpiring, daysLeft } = getExpiryWarning();
+  const statusInfo = getTimeStatus();
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg overflow-hidden border transition-transform duration-300 relative group flex flex-col h-full ${isExpiring ? 'border-orange-300 ring-1 ring-orange-200' : 'border-pink-100 hover:scale-[1.01]'}`}>
+    <div className={`bg-white rounded-xl shadow-lg overflow-hidden border transition-transform duration-300 relative group flex flex-col h-full ${statusInfo.borderColor}`}>
       <div className="p-6 bg-gradient-to-br from-[#FDF7F8] to-white flex justify-between items-start">
         <div>
-            <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-serif text-2xl font-bold text-[#D97A7D]">{title}</h3>
-                {isExpiring && (
-                    <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full border border-orange-200 animate-pulse">
-                        ⚠️ Sắp hết hạn: Còn {daysLeft === 0 ? 'hôm nay' : `${daysLeft} ngày`}
-                    </span>
-                )}
+            <div className="flex flex-col gap-2 items-start">
+                <h3 className="font-serif text-2xl font-bold text-[#D97A7D] leading-tight">{title}</h3>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${statusInfo.colorClass}`}>
+                    {statusInfo.label}
+                </span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+            <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-start">
             {onView && (
-                <Button variant="secondary" onClick={onView} className="text-xs px-3 py-1">
-                    Xem chi tiết / Quy trình
+                <Button variant="secondary" onClick={onView} className="text-xs px-3 py-1 whitespace-nowrap">
+                    Xem chi tiết
                 </Button>
             )}
             {canEdit && (
@@ -75,7 +100,6 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, endDate,
         
         <ul className="space-y-4 sm:space-y-2">
           {services.map(service => {
-            // Logic change: If fullPrice is 0 (unlikely but safe), avoid NaN
             const discountPercentage = (service.fullPrice || 0) > 0 ? Math.round((((service.fullPrice || 0) - (service.discountPrice || 0)) / (service.fullPrice || 0)) * 100) : 0;
             return (
               <li key={service.id} className="border-t border-dashed border-pink-200 py-3 flex flex-col sm:flex-row sm:items-center px-2 sm:px-4">
@@ -89,7 +113,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, endDate,
                   <p className="text-xs text-gray-500 line-clamp-1">{service.description}</p>
                 </div>
 
-                {/* Prices Container - Flex row on mobile to split space */}
+                {/* Prices Container */}
                 <div className="flex w-full sm:w-3/5 justify-between sm:justify-end items-center">
                     {/* Full Price */}
                     <div className="w-1/2 sm:w-1/3 text-left sm:text-right">
