@@ -70,6 +70,16 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
     return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
   }
 
+  // Helper to check expiry for table row
+  const getDaysLeft = (endDate: string) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(0, 0, 0, 0);
+      const diffTime = end.getTime() - today.getTime();
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -81,6 +91,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                 key={promo.id}
                 title={promo.name}
                 subtitle={`Valid from ${promo.startDate} to ${promo.endDate}`}
+                endDate={promo.endDate}
                 services={promo.services}
                 canEdit={isManagement}
                 onEdit={() => handleOpenEditForm(promo)}
@@ -124,10 +135,16 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                     const canEdit = loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign;
                     // Logic: Management can delete anything. Product can delete only their own Pending Design proposals.
                     const canDelete = loggedInUser.role === Role.Management || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
+                    
+                    const daysLeft = getDaysLeft(promo.endDate);
+                    const isExpiring = daysLeft >= 0 && daysLeft <= 3 && promo.status === PromotionStatus.Approved;
 
                     return (
                       <tr key={promo.id} className="hover:bg-gray-50">
-                        <td className="py-4 px-6 font-medium text-gray-900">{promo.name}</td>
+                        <td className="py-4 px-6 font-medium text-gray-900">
+                            {promo.name}
+                            {isExpiring && <span className="ml-2 text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded border border-orange-200" title="Sắp hết hạn">⚠️</span>}
+                        </td>
                         <td className="py-4 px-6 text-sm text-gray-500">{getMonthFromDate(promo.startDate)}</td>
                         <td className="py-4 px-6 text-sm text-gray-500">{promo.startDate} - {promo.endDate}</td>
                         <td className="py-4 px-6 text-center">

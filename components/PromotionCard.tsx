@@ -1,13 +1,15 @@
+
 import React from 'react';
 import { PromotionService } from '../types';
 import Button from './shared/Button';
 
 interface PromotionCardProps {
   title: string;
-  subtitle: string;
+  subtitle: string; // "Valid from... to..."
+  endDate: string; // Need raw date to calculate expiry
   services: PromotionService[];
   onEdit?: () => void;
-  onView?: () => void; // New prop for viewing details
+  onView?: () => void;
   canEdit?: boolean;
 }
 
@@ -16,12 +18,38 @@ const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat('vi-VN').format(value);
 };
 
-const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, services, onEdit, onView, canEdit }) => {
+const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, endDate, services, onEdit, onView, canEdit }) => {
+  
+  // Logic to check expiry
+  const getExpiryWarning = () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(0, 0, 0, 0);
+      
+      const diffTime = end.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0 && diffDays <= 3) {
+          return { isExpiring: true, daysLeft: diffDays };
+      }
+      return { isExpiring: false, daysLeft: 0 };
+  };
+
+  const { isExpiring, daysLeft } = getExpiryWarning();
+
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-pink-100 transform hover:scale-[1.01] transition-transform duration-300 relative group flex flex-col h-full">
+    <div className={`bg-white rounded-xl shadow-lg overflow-hidden border transition-transform duration-300 relative group flex flex-col h-full ${isExpiring ? 'border-orange-300 ring-1 ring-orange-200' : 'border-pink-100 hover:scale-[1.01]'}`}>
       <div className="p-6 bg-gradient-to-br from-[#FDF7F8] to-white flex justify-between items-start">
         <div>
-            <h3 className="font-serif text-2xl font-bold text-[#D97A7D]">{title}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-serif text-2xl font-bold text-[#D97A7D]">{title}</h3>
+                {isExpiring && (
+                    <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full border border-orange-200 animate-pulse">
+                        ⚠️ Sắp hết hạn: Còn {daysLeft === 0 ? 'hôm nay' : `${daysLeft} ngày`}
+                    </span>
+                )}
+            </div>
             <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
         </div>
         <div className="flex gap-2">
