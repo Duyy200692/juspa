@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User, Service, Promotion, Role, PromotionStatus } from '../types';
 import Button from './shared/Button';
@@ -12,6 +13,7 @@ interface DashboardProps {
   proposalPromotions: Promotion[];
   onAddPromotion: (promotion: Omit<Promotion, 'id'>) => Promise<void>;
   onUpdatePromotion: (promotion: Promotion) => Promise<void>;
+  onDeletePromotion: (promotionId: string) => Promise<void>;
 }
 
 const getStatusColor = (status: PromotionStatus) => {
@@ -24,7 +26,7 @@ const getStatusColor = (status: PromotionStatus) => {
     }
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePromotions, proposalPromotions, onAddPromotion, onUpdatePromotion }) => {
+const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePromotions, proposalPromotions, onAddPromotion, onUpdatePromotion, onDeletePromotion }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Promotion | null>(null);
   const [editingProposal, setEditingProposal] = useState<Promotion | null>(null);
@@ -54,6 +56,12 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
       await onAddPromotion(promotionData as Omit<Promotion, 'id'>);
     }
     handleFormClose();
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+      if (window.confirm(`Bạn có chắc chắn muốn xóa chương trình "${name}" không?`)) {
+          await onDeletePromotion(id);
+      }
   };
 
   const getMonthFromDate = (dateString: string) => {
@@ -112,7 +120,11 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {proposalPromotions.map(promo => {
-                    const canEdit = loggedInUser.role === Role.Product && promo.proposerId === loggedInUser.id && promo.status === PromotionStatus.PendingDesign;
+                    const isOwner = promo.proposerId === loggedInUser.id;
+                    const canEdit = loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign;
+                    // Logic: Management can delete anything. Product can delete only their own Pending Design proposals.
+                    const canDelete = loggedInUser.role === Role.Management || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
+
                     return (
                       <tr key={promo.id} className="hover:bg-gray-50">
                         <td className="py-4 px-6 font-medium text-gray-900">{promo.name}</td>
@@ -128,6 +140,9 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                             <Button variant="secondary" onClick={() => handleOpenEditForm(promo)}>Edit</Button>
                           )}
                           <Button variant="secondary" onClick={() => setSelectedProposal(promo)}>View</Button>
+                          {canDelete && (
+                            <Button variant="danger" onClick={() => handleDelete(promo.id, promo.name)}>Xóa</Button>
+                          )}
                         </td>
                       </tr>
                     )

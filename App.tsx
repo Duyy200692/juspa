@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { db } from './firebaseConfig';
 
@@ -155,18 +156,18 @@ const App: React.FC = () => {
   // --- User Profile Updates ---
   const handleUpdateUserName = async (newName: string) => {
     if (loggedInUser) {
-        await db.collection('users').doc(loggedInUser.id).update({ name: newName });
+        const userRef = db.collection('users').doc(loggedInUser.id);
+        await userRef.update({ name: newName });
     }
   };
 
   // --- Actions: Users (Firebase) ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newId = `user-${Date.now()}`;
-    await db.collection('users').doc(newId).set({ ...newUserData, id: newId });
+    const userRef = db.collection('users').doc(newId);
+    await userRef.set({ ...newUserData, id: newId });
   };
   
-  // NOTE: Removed unused updateUser function to fix build error TS6133
-
   const deleteUser = async (userId: string) => {
       await db.collection('users').doc(userId).delete();
   };
@@ -174,23 +175,29 @@ const App: React.FC = () => {
   // --- Actions: Promotions (Firebase) ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
     const newId = `promo-${Date.now()}`;
-    await db.collection('promotions').doc(newId).set({ ...newPromotionData, id: newId });
+    const promoRef = db.collection('promotions').doc(newId);
+    await promoRef.set({ ...newPromotionData, id: newId });
   };
   
   const updatePromotion = async (updatedPromotion: Promotion) => {
-    // FIX: Force cast to satisfy TypeScript strict checking
-    await db.collection('promotions').doc(updatedPromotion.id).update({ ...updatedPromotion } as any);
+    const promoRef = db.collection('promotions').doc(updatedPromotion.id);
+    await promoRef.update({ ...updatedPromotion });
+  };
+
+  const deletePromotion = async (promotionId: string) => {
+    await db.collection('promotions').doc(promotionId).delete();
   };
 
   // --- Actions: Services (Firebase) ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
     const newId = `service-${Date.now()}`;
-    await db.collection('services').doc(newId).set({ ...newServiceData, id: newId });
+    const serviceRef = db.collection('services').doc(newId);
+    await serviceRef.set({ ...newServiceData, id: newId });
   };
   
   const updateService = async (updatedService: Service) => {
-    // FIX: Force cast to satisfy TypeScript strict checking
-    await db.collection('services').doc(updatedService.id).update({ ...updatedService } as any);
+    const serviceRef = db.collection('services').doc(updatedService.id);
+    await serviceRef.update({ ...updatedService });
   };
   
   const deleteService = async (serviceId: string) => {
@@ -233,6 +240,7 @@ const App: React.FC = () => {
             proposalPromotions={proposalPromotions}
             onAddPromotion={addPromotion}
             onUpdatePromotion={updatePromotion}
+            onDeletePromotion={deletePromotion}
           />
         )}
         
