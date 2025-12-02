@@ -33,10 +33,10 @@ const App: React.FC = () => {
     const seedInitialData = async () => {
         console.log("Checking for initial data...");
         try {
-            // Check users
+            // 1. Check & Seed Users
             const usersSnap = await getDocs(collection(db, 'users'));
             if (usersSnap.empty) {
-                console.log("No users found. Seeding default users...");
+                console.log("Seeding users...");
                 const batch = writeBatch(db);
                 DEFAULT_USERS.forEach(user => {
                     const docRef = doc(db, 'users', user.id);
@@ -44,10 +44,11 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
-            // Check services
+
+            // 2. Check & Seed Services
             const servicesSnap = await getDocs(collection(db, 'services'));
             if (servicesSnap.empty) {
-                console.log("No services found. Seeding default services...");
+                console.log("Seeding services...");
                 const batch = writeBatch(db);
                 DEFAULT_SERVICES.forEach(service => {
                     const docRef = doc(db, 'services', service.id);
@@ -55,10 +56,11 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
-             // Check promotions
+
+             // 3. Check & Seed Promotions
             const promotionsSnap = await getDocs(collection(db, 'promotions'));
             if (promotionsSnap.empty) {
-                console.log("No promotions found. Seeding default promotions...");
+                console.log("Seeding promotions...");
                 const batch = writeBatch(db);
                 DEFAULT_PROMOTIONS.forEach(promo => {
                     const docRef = doc(db, 'promotions', promo.id);
@@ -66,12 +68,27 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
+
+            // 4. Check & Seed Inventory (QUAN TRỌNG: Nạp dữ liệu kho từ constants.ts)
+            const inventorySnap = await getDocs(collection(db, 'inventory'));
+            if (inventorySnap.empty) {
+                console.log("Seeding inventory...");
+                // Firestore batch limit is 500, our list is smaller so one batch is fine
+                const batch = writeBatch(db);
+                DEFAULT_INVENTORY.forEach(item => {
+                    const docRef = doc(db, 'inventory', item.id);
+                    batch.set(docRef, item);
+                });
+                await batch.commit();
+            }
+
         } catch (err) {
             console.error("Error seeding data:", err);
         }
     };
 
     const setupListeners = () => {
+        // Listeners for all collections
         const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
             const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
             setUsers(loadedUsers);
@@ -118,7 +135,8 @@ const App: React.FC = () => {
 
   }, []);
 
-  // ... (Computed Values & Auth - Unchanged) ...
+  // ... (Rest of logic: Computed Values, Auth Handlers) ...
+  // Giữ nguyên phần logic tính toán và đăng nhập như bản trước
   const activePromotions = useMemo(() => {
     const now = new Date();
     return promotions.filter(p => 
@@ -215,7 +233,7 @@ const App: React.FC = () => {
     await deleteDoc(doc(db, 'services', serviceId));
   }
 
-  // --- Inventory Actions ---
+  // Inventory Actions
   const importInventoryItem = async (itemId: string, quantity: number, notes?: string) => {
       if (!loggedInUser) return;
       const item = inventoryItems.find(i => i.id === itemId);
@@ -264,20 +282,20 @@ const App: React.FC = () => {
 
   const handleForceSeedInventory = async () => {
       try {
-          console.log("Starting force seed with", DEFAULT_INVENTORY.length, "items.");
           const batch = writeBatch(db);
           DEFAULT_INVENTORY.forEach(item => {
               const docRef = doc(db, 'inventory', item.id);
               batch.set(docRef, item);
           });
           await batch.commit();
-          alert(`Đã nạp thành công ${DEFAULT_INVENTORY.length} mặt hàng vào kho!`);
+          alert("Đã nạp dữ liệu kho mẫu thành công! (Vui lòng đợi vài giây để cập nhật)");
       } catch (e) {
           console.error(e);
           alert("Lỗi khi nạp dữ liệu: " + e);
       }
   };
 
+  // ... (Render Logic) ...
   if (isLoading) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">

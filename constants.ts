@@ -122,11 +122,24 @@ export const PROMOTIONS: Promotion[] = [
   }
 ];
 
-// Helper to create Inventory Item
-const inv = (name: string, location: string, unit: string, qty: number, expiry?: string): InventoryItem => ({
-    id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    name, location, unit, quantity: qty, expiryDate: expiry
-});
+// FIX: Helper to create Inventory Item safely without undefined values
+const inv = (name: string, location: string, unit: string, qty: number, expiry?: string): InventoryItem => {
+    // Create base object
+    const item: any = {
+        id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name, 
+        location, 
+        unit, 
+        quantity: qty
+    };
+    
+    // Only add expiryDate if it exists, to avoid sending 'undefined' to Firestore
+    if (expiry) {
+        item.expiryDate = expiry;
+    }
+    
+    return item as InventoryItem;
+};
 
 // INITIAL INVENTORY DATA FROM EXCEL - FULL LIST
 export const INVENTORY_ITEMS: InventoryItem[] = [
