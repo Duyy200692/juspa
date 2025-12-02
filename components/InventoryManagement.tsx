@@ -9,6 +9,8 @@ interface InventoryManagementProps {
   currentUser: User;
   onImportItem: (itemId: string, quantity: number, notes?: string) => Promise<void>;
   onExportItem: (itemId: string, quantity: number, reason: string) => Promise<void>;
+  // New prop to force seed data
+  onSeedData: () => Promise<void>;
 }
 
 interface ActionModalProps {
@@ -59,11 +61,12 @@ const ActionModal: React.FC<ActionModalProps> = ({ isOpen, onClose, type, item, 
     );
 };
 
-const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transactions, currentUser, onImportItem, onExportItem }) => {
+const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transactions, currentUser, onImportItem, onExportItem, onSeedData }) => {
   const [tab, setTab] = useState<'stock' | 'history'>('stock');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLocation, setFilterLocation] = useState('all');
   const [modalState, setModalState] = useState<{isOpen: boolean, type: 'in'|'out', item: InventoryItem | null}>({isOpen: false, type: 'in', item: null});
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const locations = useMemo(() => Array.from(new Set(items.map(i => i.location))).sort(), [items]);
 
@@ -100,10 +103,29 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
       }
   };
 
+  const handleSeedClick = async () => {
+      if (window.confirm("Bạn có chắc chắn muốn nạp lại dữ liệu gốc? Hành động này sẽ thêm hơn 100 sản phẩm mẫu vào kho.")) {
+          setIsSeeding(true);
+          await onSeedData();
+          setIsSeeding(false);
+      }
+  }
+
   return (
     <div className="space-y-6">
-        <div className="flex justify-between items-center">
-            <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Quản lý Kho (Inventory)</h2>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-4">
+                <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Quản lý Kho (Inventory)</h2>
+                {(currentUser.role === Role.Management || currentUser.role === Role.Accountant) && items.length === 0 && (
+                    <button 
+                        onClick={handleSeedClick} 
+                        disabled={isSeeding}
+                        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded border border-gray-300 flex items-center gap-1"
+                    >
+                        {isSeeding ? 'Đang nạp...' : '🔄 Nạp dữ liệu gốc'}
+                    </button>
+                )}
+            </div>
             <div className="flex space-x-2 bg-white rounded-lg p-1 border border-gray-200">
                 <button onClick={() => setTab('stock')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === 'stock' ? 'bg-pink-100 text-[#D97A7D]' : 'text-gray-600 hover:bg-gray-50'}`}>Danh sách Tồn kho</button>
                 <button onClick={() => setTab('history')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === 'history' ? 'bg-pink-100 text-[#D97A7D]' : 'text-gray-600 hover:bg-gray-50'}`}>Lịch sử Nhập/Xuất</button>
@@ -167,6 +189,13 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
                                     </tr>
                                 );
                             })}
+                            {filteredItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} className="text-center py-8 text-gray-400">
+                                        {items.length === 0 ? "Kho đang trống." : "Không tìm thấy sản phẩm phù hợp."}
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
