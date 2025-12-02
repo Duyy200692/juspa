@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Modal from './shared/Modal';
 import Button from './shared/Button';
@@ -37,9 +38,10 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push(s);
     });
+    // FIX: Cast return type to avoid 'unknown' type on items in the render loop
     return Object.fromEntries(
         Object.entries(groups).sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
-    );
+    ) as Record<string, Service[]>;
   }, [services]);
 
   const bulkSummary = useMemo(() => {

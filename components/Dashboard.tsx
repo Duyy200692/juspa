@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, Service, Promotion, Role, PromotionStatus } from '../types';
 import Button from './shared/Button';
 import PromotionCard from './PromotionCard';
@@ -31,8 +31,32 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
   const [selectedProposal, setSelectedProposal] = useState<Promotion | null>(null);
   const [editingProposal, setEditingProposal] = useState<Promotion | null>(null);
 
+  // Filter States
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+
   const canViewProposals = [Role.Product, Role.Marketing, Role.Management].includes(loggedInUser.role);
   const isManagement = loggedInUser.role === Role.Management;
+
+  // Generate Year Options dynamically from data
+  const availableYears = useMemo(() => {
+      // FIX: Explicitly type Set<number> to ensure sort comparison works with numbers
+      const years = new Set<number>(proposalPromotions.map(p => new Date(p.startDate).getFullYear()));
+      const currentYear = new Date().getFullYear();
+      years.add(currentYear);
+      years.add(currentYear + 1); // Add next year for planning
+      return Array.from(years).sort((a, b) => b - a);
+  }, [proposalPromotions]);
+
+  // Filter Logic
+  const filteredProposals = useMemo(() => {
+      return proposalPromotions.filter(p => {
+          const date = new Date(p.startDate);
+          const monthMatch = selectedMonth === 'all' || date.getMonth() + 1 === parseInt(selectedMonth);
+          const yearMatch = selectedYear === 'all' || date.getFullYear() === parseInt(selectedYear);
+          return monthMatch && yearMatch;
+      }).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  }, [proposalPromotions, selectedMonth, selectedYear]);
 
   const handleOpenCreateForm = () => {
     setEditingProposal(null);
@@ -67,10 +91,9 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
   const getMonthFromDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+    return `Tháng ${date.getMonth() + 1}`;
   }
 
-  // Helper to get time-based status for table row
   const getTimeBadge = (startDate: string, endDate: string, status: PromotionStatus) => {
       if (status !== PromotionStatus.Approved) return null;
 
@@ -130,8 +153,11 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
 
       {canViewProposals && (
         <div>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 sm:gap-0">
-            <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Promotion Proposals History</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 gap-4 sm:gap-0">
+            <div>
+                <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Promotion Proposals History</h2>
+                <p className="text-sm text-gray-500 mt-1">Danh sách tất cả các đề xuất khuyến mãi</p>
+            </div>
             {loggedInUser.role === Role.Product && (
               <Button onClick={handleOpenCreateForm} className="w-full sm:w-auto">
                 + Propose New Promotion
@@ -139,6 +165,47 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
             )}
           </div>
           
+          {/* Month/Year Filter Bar */}
+          <div className="bg-white p-3 rounded-lg border border-pink-100 shadow-sm mb-4 flex flex-wrap items-center gap-3">
+              <span className="text-sm font-bold text-[#D97A7D] flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                  Lọc theo thời gian:
+              </span>
+              
+              <div className="flex items-center gap-2">
+                  <select 
+                      value={selectedMonth} 
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-[#E5989B] focus:border-[#E5989B] bg-gray-50 hover:bg-white transition-colors cursor-pointer"
+                  >
+                      <option value="all">Tất cả các tháng</option>
+                      {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
+                      ))}
+                  </select>
+
+                  <select 
+                      value={selectedYear} 
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-[#E5989B] focus:border-[#E5989B] bg-gray-50 hover:bg-white transition-colors cursor-pointer"
+                  >
+                      <option value="all">Tất cả các năm</option>
+                      {availableYears.map(year => (
+                          <option key={year} value={year}>Năm {year}</option>
+                      ))}
+                  </select>
+              </div>
+
+              {(selectedMonth !== 'all' || selectedYear !== 'all') && (
+                  <button 
+                      onClick={() => { setSelectedMonth('all'); setSelectedYear('all'); }}
+                      className="text-xs text-gray-500 hover:text-red-500 underline ml-auto"
+                  >
+                      Xóa lọc
+                  </button>
+              )}
+          </div>
+
           <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
             <div className="overflow-x-auto">
               <table className="min-w-full whitespace-nowrap">
@@ -152,7 +219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {proposalPromotions.map(promo => {
+                  {filteredProposals.map(promo => {
                     const isOwner = promo.proposerId === loggedInUser.id;
                     const canEdit = loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign;
                     const canDelete = loggedInUser.role === Role.Management || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
@@ -185,8 +252,8 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, services, activePro
                 </tbody>
               </table>
             </div>
-            {proposalPromotions.length === 0 && (
-                <div className="text-center py-8 text-gray-500">Chưa có đề xuất cũ.</div>
+            {filteredProposals.length === 0 && (
+                <div className="text-center py-8 text-gray-500">Không tìm thấy chương trình nào phù hợp.</div>
             )}
           </div>
         </div>
