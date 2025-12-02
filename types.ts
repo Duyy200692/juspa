@@ -3,14 +3,15 @@ export enum Role {
   Marketing = 'Marketing',
   Management = 'Management',
   Reception = 'Reception',
+  Accountant = 'Accountant', // New Role
 }
 
 export interface User {
   id: string;
   name: string;
   role: Role;
-  username: string; // Tên đăng nhập
-  password?: string; // Mật khẩu
+  username: string;
+  password?: string;
 }
 
 export type ServiceType = 'single' | 'combo';
@@ -20,21 +21,19 @@ export interface Service {
   name: string;
   description: string;
   type: ServiceType;
-  category?: string; // Danh mục dịch vụ (VD: RF, Hydrafacial...)
-  consultationNote?: string; // Quy trình / Các bước thực hiện
+  category?: string;
+  consultationNote?: string;
   
-  // Pricing Structure
-  priceOriginal: number;    // Giá bán gốc
-  discountPercent?: number; // Cột Giảm (%) để note
-  pricePromo: number;       // Giá KM/Trial
-  pricePackage5: number;    // 5 tặng 5 (Promotion Package)
-  pricePackage15: number;   // 10 tặng 15 (Promotion Package)
+  priceOriginal: number;
+  discountPercent?: number;
+  pricePromo: number;
+  pricePackage5: number;
+  pricePackage15: number;
   
-  // Session Packages
-  pricePackage3: number;        // Gói 3 lần (Was 2)
-  pricePackage5Sessions: number; // Gói 5 lần (Distinct from Buy 5 Get 5)
-  pricePackage10: number;       // Gói 10 lần
-  pricePackage20: number;       // Gói 20 lần
+  pricePackage3: number;
+  pricePackage5Sessions: number;
+  pricePackage10: number;
+  pricePackage20: number;
 }
 
 export enum PromotionStatus {
@@ -45,9 +44,9 @@ export enum PromotionStatus {
 }
 
 export interface PromotionService extends Service {
-  discountPrice: number; // The price offered in the specific promotion
-  fullPrice: number;     // Snapshot of priceOriginal at the time of promotion
-  isCombo?: boolean;     // Ad-hoc combo created within a promotion
+  discountPrice: number;
+  fullPrice: number;
+  isCombo?: boolean;
 }
 
 export interface Promotion {
@@ -62,5 +61,33 @@ export interface Promotion {
   managementNotes?: string;
   designUrl?: string;
   proposerId: string;
-  consultationNote?: string; // Custom consultation steps for this specific promotion
+  consultationNote?: string;
+}
+
+// --- INVENTORY TYPES ---
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  unit: string; // cái, hộp, chai, ml...
+  quantity: number;
+  location: string; // Kệ A, Kệ B...
+  expiryDate?: string; // YYYY-MM-DD
+  minThreshold?: number; // Cảnh báo sắp hết hàng
+  notes?: string;
+}
+
+export type TransactionType = 'in' | 'out';
+
+export interface InventoryTransaction {
+  id: string;
+  itemId: string;
+  itemName: string;
+  type: TransactionType;
+  quantity: number;
+  date: string; // ISO string
+  performedBy: string; // User Name
+  performedById: string; // User ID
+  reason?: string; // e.g., "Khách dùng", "Hư hỏng", "Nhập hàng mới"
+  remainingStock: number;
 }

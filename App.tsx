@@ -1,5 +1,6 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
+// FIX: Import directly from firebase SDK for real connection
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query, addDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 import Header from './components/Header';
@@ -8,16 +9,19 @@ import ServiceManagement from './components/ServiceManagement';
 import LoginScreen from './components/LoginScreen';
 import UserManagement from './components/UserManagement';
 import LandingPage from './components/LandingPage';
-import { User, Promotion, Service, Role } from './types';
-import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS } from './constants';
+import InventoryManagement from './components/InventoryManagement'; // Import new component
+import { User, Promotion, Service, Role, InventoryItem, InventoryTransaction } from './types';
+import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS, INVENTORY_ITEMS as DEFAULT_INVENTORY } from './constants';
 
-type View = 'dashboard' | 'services' | 'users';
+type View = 'dashboard' | 'services' | 'users' | 'inventory';
 
 const App: React.FC = () => {
   const [showLanding, setShowLanding] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]); // State for Inventory
+  const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]); // State for Transactions
   
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [view, setView] = useState<View>('dashboard');
@@ -30,63 +34,89 @@ const App: React.FC = () => {
         console.log("Checking for initial data...");
         try {
             // Check users
-            const usersSnap = await db.collection('users').get();
+            const usersSnap = await getDocs(collection(db, 'users'));
             if (usersSnap.empty) {
                 console.log("No users found. Seeding default users...");
-                const batch = db.batch();
+                const batch = writeBatch(db);
                 DEFAULT_USERS.forEach(user => {
-                    const docRef = db.collection('users').doc(user.id);
+                    const docRef = doc(db, 'users', user.id);
                     batch.set(docRef, user);
                 });
                 await batch.commit();
             }
             // Check services
-            const servicesSnap = await db.collection('services').get();
+            const servicesSnap = await getDocs(collection(db, 'services'));
             if (servicesSnap.empty) {
                 console.log("No services found. Seeding default services...");
-                const batch = db.batch();
+                const batch = writeBatch(db);
                 DEFAULT_SERVICES.forEach(service => {
-                    const docRef = db.collection('services').doc(service.id);
+                    const docRef = doc(db, 'services', service.id);
                     batch.set(docRef, service);
                 });
                 await batch.commit();
             }
              // Check promotions
-            const promotionsSnap = await db.collection('promotions').get();
+            const promotionsSnap = await getDocs(collection(db, 'promotions'));
             if (promotionsSnap.empty) {
                 console.log("No promotions found. Seeding default promotions...");
-                const batch = db.batch();
+                const batch = writeBatch(db);
                 DEFAULT_PROMOTIONS.forEach(promo => {
-                    const docRef = db.collection('promotions').doc(promo.id);
+                    const docRef = doc(db, 'promotions', promo.id);
                     batch.set(docRef, promo);
                 });
                 await batch.commit();
             }
+            // Check Inventory - SEEDING
+            const inventorySnap = await getDocs(collection(db, 'inventory'));
+            if (inventorySnap.empty) {
+                console.log("No inventory found. Seeding default inventory items...");
+                // Process in chunks of 500 (Firestore batch limit) though we have fewer
+                const batch = writeBatch(db);
+                DEFAULT_INVENTORY.forEach(item => {
+                    const docRef = doc(db, 'inventory', item.id);
+                    batch.set(docRef, item);
+                });
+                await batch.commit();
+            }
+
         } catch (err) {
             console.error("Error seeding data:", err);
         }
     };
 
     const setupListeners = () => {
-        const unsubUsers = db.collection("users").onSnapshot((snapshot) => {
+        const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
             const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
             setUsers(loadedUsers);
         });
 
-        const unsubServices = db.collection("services").onSnapshot((snapshot) => {
+        const unsubServices = onSnapshot(query(collection(db, "services")), (snapshot) => {
             const loadedServices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Service));
             setServices(loadedServices.sort((a, b) => (a.category || '').localeCompare(b.category || '')));
         });
 
-        const unsubPromotions = db.collection("promotions").onSnapshot((snapshot) => {
+        const unsubPromotions = onSnapshot(query(collection(db, "promotions")), (snapshot) => {
             const loadedPromotions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Promotion));
             setPromotions(loadedPromotions);
+        });
+
+        // Inventory Listeners
+        const unsubInventory = onSnapshot(query(collection(db, "inventory")), (snapshot) => {
+            const loadedItems = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryItem));
+            setInventoryItems(loadedItems);
+        });
+
+        const unsubTransactions = onSnapshot(query(collection(db, "inventory_transactions")), (snapshot) => {
+            const loadedTrans = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryTransaction));
+            setInventoryTransactions(loadedTrans);
         });
         
         return () => {
             unsubUsers();
             unsubServices();
             unsubPromotions();
+            unsubInventory();
+            unsubTransactions();
         };
     };
 
@@ -156,53 +186,102 @@ const App: React.FC = () => {
   // --- User Profile Updates ---
   const handleUpdateUserName = async (newName: string) => {
     if (loggedInUser) {
-        const userRef = db.collection('users').doc(loggedInUser.id);
-        await userRef.update({ name: newName });
+        const userRef = doc(db, 'users', loggedInUser.id);
+        await updateDoc(userRef, { name: newName });
     }
   };
 
   // --- Actions: Users (Firebase) ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newId = `user-${Date.now()}`;
-    const userRef = db.collection('users').doc(newId);
-    await userRef.set({ ...newUserData, id: newId });
+    const userRef = doc(db, 'users', newId);
+    await setDoc(userRef, { ...newUserData, id: newId });
   };
   
   const deleteUser = async (userId: string) => {
-      await db.collection('users').doc(userId).delete();
+      await deleteDoc(doc(db, 'users', userId));
   };
 
   // --- Actions: Promotions (Firebase) ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
     const newId = `promo-${Date.now()}`;
-    const promoRef = db.collection('promotions').doc(newId);
-    await promoRef.set({ ...newPromotionData, id: newId });
+    const promoRef = doc(db, 'promotions', newId);
+    await setDoc(promoRef, { ...newPromotionData, id: newId });
   };
   
   const updatePromotion = async (updatedPromotion: Promotion) => {
-    const promoRef = db.collection('promotions').doc(updatedPromotion.id);
-    await promoRef.update({ ...updatedPromotion });
+    const promoRef = doc(db, 'promotions', updatedPromotion.id);
+    await updateDoc(promoRef, { ...updatedPromotion } as { [key: string]: any });
   };
 
   const deletePromotion = async (promotionId: string) => {
-    await db.collection('promotions').doc(promotionId).delete();
+    await deleteDoc(doc(db, 'promotions', promotionId));
   };
 
   // --- Actions: Services (Firebase) ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
     const newId = `service-${Date.now()}`;
-    const serviceRef = db.collection('services').doc(newId);
-    await serviceRef.set({ ...newServiceData, id: newId });
+    const serviceRef = doc(db, 'services', newId);
+    await setDoc(serviceRef, { ...newServiceData, id: newId });
   };
   
   const updateService = async (updatedService: Service) => {
-    const serviceRef = db.collection('services').doc(updatedService.id);
-    await serviceRef.update({ ...updatedService });
+    const serviceRef = doc(db, 'services', updatedService.id);
+    await updateDoc(serviceRef, { ...updatedService } as { [key: string]: any });
   };
   
   const deleteService = async (serviceId: string) => {
-    await db.collection('services').doc(serviceId).delete();
+    await deleteDoc(doc(db, 'services', serviceId));
   }
+
+  // --- Actions: Inventory (Firebase) ---
+  const importInventoryItem = async (itemId: string, quantity: number, notes?: string) => {
+      if (!loggedInUser) return;
+      const item = inventoryItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const newQty = item.quantity + quantity;
+      const itemRef = doc(db, 'inventory', itemId);
+      
+      await updateDoc(itemRef, { quantity: newQty });
+
+      // Record transaction
+      await addDoc(collection(db, 'inventory_transactions'), {
+          itemId,
+          itemName: item.name,
+          type: 'in',
+          quantity,
+          date: new Date().toISOString(),
+          performedBy: loggedInUser.name,
+          performedById: loggedInUser.id,
+          reason: notes || 'Nhập hàng',
+          remainingStock: newQty
+      });
+  };
+
+  const exportInventoryItem = async (itemId: string, quantity: number, reason: string) => {
+      if (!loggedInUser) return;
+      const item = inventoryItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const newQty = Math.max(0, item.quantity - quantity);
+      const itemRef = doc(db, 'inventory', itemId);
+      
+      await updateDoc(itemRef, { quantity: newQty });
+
+      // Record transaction
+      await addDoc(collection(db, 'inventory_transactions'), {
+          itemId,
+          itemName: item.name,
+          type: 'out',
+          quantity,
+          date: new Date().toISOString(),
+          performedBy: loggedInUser.name,
+          performedById: loggedInUser.id,
+          reason: reason,
+          remainingStock: newQty
+      });
+  };
 
   // --- Main Render Flow ---
   if (isLoading) {
@@ -251,6 +330,16 @@ const App: React.FC = () => {
             onUpdateService={updateService}
             onDeleteService={deleteService}
           />
+        )}
+
+        {view === 'inventory' && (
+            <InventoryManagement 
+                items={inventoryItems}
+                transactions={inventoryTransactions}
+                currentUser={loggedInUser}
+                onImportItem={importInventoryItem}
+                onExportItem={exportInventoryItem}
+            />
         )}
 
         {view === 'users' && loggedInUser.role === Role.Management && (

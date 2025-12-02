@@ -1,16 +1,16 @@
-import { User, Service, Promotion, Role, PromotionStatus } from './types';
+import { User, Service, Promotion, Role, PromotionStatus, InventoryItem } from './types';
 
-// Default users representing the 4 roles
+// Default users
 export const USERS: User[] = [
   { id: 'user-product', name: 'Team Product', role: Role.Product, username: 'product', password: '1' },
   { id: 'user-mkt', name: 'Team Marketing', role: Role.Marketing, username: 'mkt', password: '1' },
   { id: 'user-boss', name: 'Julie Nguyễn', role: Role.Management, username: 'admin', password: '1' },
   { id: 'user-reception', name: 'Lễ Tân', role: Role.Reception, username: 'reception', password: '1' },
+  { id: 'user-accountant', name: 'Kế Toán', role: Role.Accountant, username: 'ketoan', password: '1' },
 ];
 
 // Helper to create mock pricing
 const createService = (id: string, name: string, category: string, desc: string, basePrice: number, discountPercent: number = 0, note: string = '', type: 'single' | 'combo' = 'single'): Service => {
-    // Calculate promo price based on discount if provided, otherwise default logic or 0
     const pricePromo = discountPercent > 0 
         ? basePrice * (1 - discountPercent / 100)
         : Math.round(basePrice * 0.5 / 1000) * 1000;
@@ -25,26 +25,19 @@ const createService = (id: string, name: string, category: string, desc: string,
         priceOriginal: basePrice,
         discountPercent: discountPercent,
         pricePromo: pricePromo, 
-        pricePackage5: basePrice * 5, // Buy 5 Get 5
-        pricePackage15: basePrice * 10, // Buy 10 Get 15
-        
-        // Standard Packages (Calculated with slight discounts)
-        pricePackage3: basePrice * 3 * 0.95, // Package 3 sessions
+        pricePackage5: basePrice * 5,
+        pricePackage15: basePrice * 10,
+        pricePackage3: basePrice * 3 * 0.95,
         pricePackage5Sessions: basePrice * 5 * 0.9, 
         pricePackage10: basePrice * 10 * 0.85, 
         pricePackage20: basePrice * 20 * 0.8, 
     };
 };
 
-
-// DATA FROM USER'S SPREADSHEET IMAGE
 export const SERVICES: Service[] = [
-  // Combo RF + Hydrafacial
   createService('combo-rf-h-classic', 'RF + Hydrafacial (classic)', 'Combo Đặc Biệt', '', 6500000, 60, '', 'combo'),
   createService('combo-rf-h-sysnature', 'RF + Hydrafacial (sysnature)', 'Combo Đặc Biệt', '', 7600000, 60, '', 'combo'),
   createService('combo-rf-h-platinum', 'RF + Hydrafacial (platinum)', 'Combo Đặc Biệt', '', 9600000, 60, '', 'combo'),
-  
-  // RF
   createService('rf-mat-matnong', 'RF mặt - mắt/nọng', 'Công nghệ RF', 'Thời lượng 30 phút', 4500000, 50),
   createService('rf-c+', 'C+', 'Công nghệ RF', '15 phút', 900000, 50),
   createService('rf-add-vitamin', 'Add Vitamin', 'Công nghệ RF', '15 phút', 900000, 50),
@@ -56,20 +49,14 @@ export const SERVICES: Service[] = [
   createService('rf-bap-chuoi', 'Bắp chuối', 'Công nghệ RF', '30 phút', 3000000, 50),
   createService('rf-bung', 'Bụng', 'Công nghệ RF', '30 phút', 3500000, 50),
   createService('rf-that-lung-eo', 'Thắt lưng + Eo', 'Công nghệ RF', '30 phút', 3000000, 50),
-  
-  // Hydrafacial
   createService('hf-classic', 'Classic', 'Hydrafacial', '90 phút', 4600000, 60),
   createService('hf-sysnature', 'Sysnature', 'Hydrafacial', '105 phút', 5600000, 60),
   createService('hf-platinum', 'Platinum', 'Hydrafacial', '120 phút', 8900000, 60),
   createService('hf-body-lung', 'Body lưng', 'Hydrafacial', '45 phút', 5800000, 60),
   createService('hf-body-nguc', 'Body ngực', 'Hydrafacial', '45 phút', 5000000, 60),
   createService('hf-3-vung-body', '3 vùng body', 'Hydrafacial', '90 phút', 8000000, 60),
-  
-  // GeneoX Pro
   createService('geneo-rf', 'KO RF', 'GeneoX Pro', '60 phút', 4500000, 50),
   createService('geneo-acid-neck', 'Acid Neck', 'GeneoX Pro', '30 phút', 1200000, 50),
-  
-  // Triệt Lông (từ dữ liệu cũ, giá đã được chuẩn hóa)
   createService('hr-1', 'Mép trên', 'Triệt Lông', 'Triệt lông vùng mép trên', 750000, 30, '1. Cạo lông\n2. Bôi Gel lạnh\n3. Bắn laser\n4. Dưỡng da'),
   createService('hr-2', 'Nách/Trán/Cằm', 'Triệt Lông', 'Triệt lông vùng nách, trán, hoặc cằm', 950000, 30),
   createService('hr-3', '1/2 Tay', 'Triệt Lông', 'Triệt lông 1/2 cánh tay', 1200000, 30),
@@ -84,8 +71,6 @@ export const SERVICES: Service[] = [
   createService('hr-12', 'Tay + Chân + Mặt', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và mặt', 4800000, 30, '', 'combo'),
   createService('hr-13', 'Tay + Chân + Bi', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và bikini', 4800000, 30, '', 'combo'),
   createService('hr-14', 'Toàn thân', 'Combo Triệt Lông', 'Triệt lông toàn thân', 9600000, 30, '', 'combo'),
-  
-  // Dịch vụ cũ khác
   createService('service-old-3', 'Crystal Skin Therapy', 'Chăm sóc da', 'Thanh lọc – tái tạo – cấp ẩm đa tầng', 2500000, 64),
   createService('service-old-4', 'Bliss & Balance 105’', 'Thư giãn', '45’ Relaxing Hair Wash + 60 JU Signature Massage', 800000, 19),
   createService('service-old-5', 'Oxy Boots', 'Chăm sóc da', 'Công nghệ bơm oxy áp lực cao', 1800000, 11),
@@ -135,4 +120,186 @@ export const PROMOTIONS: Promotion[] = [
        { ...SERVICES[30], fullPrice: SERVICES[30].priceOriginal, discountPrice: 1500000 },
     ]
   }
+];
+
+// Helper to create Inventory Item
+const inv = (name: string, location: string, unit: string, qty: number, expiry?: string): InventoryItem => ({
+    id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name, location, unit, quantity: qty, expiryDate: expiry
+});
+
+// INITIAL INVENTORY DATA FROM EXCEL
+export const INVENTORY_ITEMS: InventoryItem[] = [
+    // KỆ A
+    inv('Giấy vệ sinh nhân viên', 'KỆ A', 'cây', 4),
+    inv('Giấy vệ sinh cho khách', 'KỆ A', 'cây', 21),
+    inv('Viên xả bồn cầu', 'KỆ A', 'cái', 1),
+    inv('Ly giấy', 'KỆ A', 'cây', 3),
+    inv('Nước giặt xả lớn Max Kleen', 'KỆ A', 'bịch', 5),
+    inv('Nước lau kính', 'KỆ A', 'chai', 3),
+    inv('Bột giặt Omo 5KG', 'KỆ A', 'gói', 1),
+    inv('Đèn Leaf - bắt muỗi', 'KỆ A', 'cái', 1),
+    inv('Đèn Nightlight', 'KỆ A', 'cái', 1),
+    inv('Dép nhân viên cao', 'KỆ A', 'đôi', 5),
+    inv('Găng tay cao su loại to', 'KỆ A', 'ĐÔI', 2),
+    inv('Gel lọc sợi vải', 'KỆ A', 'bịch', 2),
+    inv('Ky hốt rác', 'KỆ A', 'cái', 1),
+    inv('Listerin', 'KỆ A', 'chai', 2),
+    inv('Máy sấy Dyson', 'KỆ A', 'cái', 2),
+    inv('Miếng lau nhà', 'KỆ A', 'cái', 17),
+    inv('Nước lau sàn Max Kleen', 'KỆ A', 'bình', 3),
+    inv('Nước lau sàn Max LỚN', 'KỆ A', 'gói', 4),
+    inv('Nước lau sàn Max NHỎ', 'KỆ A', 'gói', 3),
+    inv('Nước rửa tay 1 Aqua Vera', 'KỆ A', 'chai', 1),
+    inv('Vim', 'KỆ A', 'chai', 2),
+    inv('Cuộn lăn bụi', 'KỆ A', 'cái', 4),
+    inv('Khăn giấy rút - Vuông Bless you', 'KỆ A', 'gói', 16),
+    inv('Túi đựng rác', 'KỆ A', 'bịch', 10),
+    inv('Long não 1KG', 'KỆ A', 'túi', 4),
+    inv('Nến teelight', 'KỆ A', 'hộp', 3),
+    
+    // KỆ A (Tiếp) & KỆ B (Mỹ phẩm/Dầu gội)
+    inv('Miếng úp mặt cao su - Trắng', 'KỆ A', 'cái', 4),
+    inv('Miếng úp mặt cao su - Xám', 'KỆ A', 'cái', 2),
+    inv('Miếng úp mặt vải', 'KỆ A', 'cái', 2),
+    inv('Xịt thơm phòng Glade', 'KỆ A', 'chai', 2),
+    inv('Bột cám gạo sữa', 'KỆ B', 'bịch', 5, '2025-08-01'),
+    inv('Hair mask refair', 'KỆ B', 'tuýp lớn', 2, '2025-09-01'),
+    inv('Hair mask refair', 'KỆ B', 'tuýp nhỏ', 3, '2025-11-01'),
+    inv('Kem ủ tóc Fino', 'KỆ B', 'hộp', 1, '2026-06-01'),
+    inv('Dầu gội RNW', 'KỆ B', 'chai', 1, '2026-09-01'),
+    inv('Sữa non Cow\'s Milk', 'KỆ B', 'hộp', 1, '2026-10-01'),
+    inv('Xả ủ tóc Voudioty', 'KỆ B', 'hộp', 4, '2027-03-01'),
+    inv('Dầu Massage BaFy', 'KỆ B', 'chai', 4, '2027-04-01'),
+    inv('DR For Hair', 'KỆ B', 'chai', 3, '2027-05-01'),
+    inv('Dầu xả bưởi Cafuné 480ml', 'KỆ B', 'chai', 3, '2027-08-01'),
+    inv('Dầu xả bưởi Grapefruit', 'KỆ B', 'chai', 5, '2027-09-01'),
+    inv('Dầu Gội Bưởi Grapefruit', 'KỆ B', 'chai', 4, '2027-11-01'),
+    inv('Cam Ngọt Oil', 'KỆ B', 'Can', 1, '2028-01-01'),
+    inv('Sữa rửa mặt Hamotogi', 'KỆ B', 'tuýp', 4, '2029-03-01'),
+    inv('Bộ cây quét mặt nạ (3 cây)', 'KỆ B', 'gói', 1),
+    inv('Bột đậu đỏ yến mạch', 'KỆ B', 'bịch', 6),
+    inv('Cọ quét mặt nạ', 'KỆ B', 'cái', 30),
+    inv('Dầu gội Biotin', 'KỆ B', 'chai', 5),
+    inv('Dầu xả Biotin', 'KỆ B', 'chai', 5),
+    inv('Kem ủ trắng White Pack', 'KỆ B', 'hũ', 1),
+    inv('Mặt nạ mắt 20 miếng / hộp', 'KỆ B', 'hộp', 6),
+    inv('Máy matxa cây màu đỏ', 'KỆ B', 'cái', 1),
+    inv('Mốc dán tường', 'KỆ B', 'vỉ', 8),
+    inv('Muối ngâm chân thải độc', 'KỆ B', 'túi', 5),
+    inv('Muối tắm cà phê', 'KỆ B', 'túi', 11),
+    inv('Muối tắm hoa hồng 1kg', 'KỆ B', 'túi', 3),
+    inv('Mút tẩy trang bọt biển (20 cục / gói)', 'KỆ B', 'bịch', 2),
+    inv('Quế cây', 'KỆ B', 'bịch', 1),
+    inv('Tú nương', 'KỆ B', 'chai', 1),
+    inv('Túi chườm chân - 2 cái / gói', 'KỆ B', 'gói', 5),
+    inv('Viên thả bồn', 'KỆ B', 'viên', 72),
+    inv('Dép nhựa hồng', 'KỆ B', 'đôi', 2),
+    inv('Dép nhựa nâu', 'KỆ B', 'đôi', 2),
+    
+    // KỆ C
+    inv('Gói tắm trắng cà phê cao cấp', 'KỆ C', 'gói', 10),
+    inv('Dầu Massage Body', 'KỆ C', 'chai', 25),
+    inv('Sáng mỡ', 'KỆ C', 'bịch', 21, '2025-05-01'),
+    inv('Tẩy da chết Skin', 'KỆ C', 'tuýp', 2, '2025-08-01'),
+    inv('JohnsonBaby - Phấn lớn', 'KỆ C', 'chai', 3, '2026-02-01'),
+    inv('Tinh dầu ngải cứu', 'KỆ C', 'hộp', 14, '2026-06-01'),
+    inv('Povidine 10%', 'KỆ C', 'chai lớn', 2, '2026-07-01'),
+    inv('Johnsonbaby - Chai chiết phân Mini', 'KỆ C', 'chai', 16, '2026-08-01'),
+    inv('Mặt nạ mắt Skin', 'KỆ C', 'túi', 6, '2026-08-01'),
+    inv('Ý Vi - Chai xịt khoáng', 'KỆ C', 'chai', 1, '2026-12-01'),
+    inv('Gạc phẫu thuật không dệt (50 bịch / túi)', 'KỆ C', 'bịch', 124, '2027-01-01'),
+    inv('Kem chống nắng Ý Vĩ', 'KỆ C', 'tuýp', 2, '2027-03-01'),
+    inv('V.P Start', 'KỆ C', 'chai', 2, '2027-04-01'),
+    inv('Vitamin E', 'KỆ C', 'lọ', 16, '2027-06-01'),
+    inv('Muối truyền 100ml', 'KỆ C', 'chai', 3, '2027-08-01'),
+    inv('Gạc y tế vô trùng', 'KỆ C', 'bịch', 165, '2027-10-01'),
+    inv('Gạc tẩm cồn', 'KỆ C', 'hộp', 10, '2027-11-01'),
+    
+    // LỄ TÂN, KỆ C (Tiếp)
+    inv('Bông tẩy trang', 'LỄ TÂN', 'bịch', 3),
+    inv('Ủ Chamomide Repair', 'KỆ C', 'hũ', 7, '2027-12-01'),
+    inv('Găng tay phẫu thuật size M', 'KỆ C', 'hộp', 2),
+    inv('Áo ngực giấy', 'KỆ C', 'cái', 44),
+    inv('Bao tay ngón', 'KỆ C', 'hộp', 1),
+    inv('Bọc hoa sứ giả', 'KỆ C', 'hộp', 1),
+    inv('Bơm tiêm 10 Vinahankook', 'KỆ C', 'cái', 63),
+    inv('Bơm tiêm 5 Vinahankook', 'KỆ C', 'cái', 46),
+    inv('Bông gòn viên', 'KỆ C', 'bịch', 3),
+    inv('Bông lau oval', 'KỆ C', 'bịch', 5),
+    inv('Cây ngải cứu màu xanh lá', 'KỆ C', 'cái', 2),
+    inv('Chén cao su hồng', 'KỆ C', 'cái', 2),
+    inv('Chén inox nhỏ', 'KỆ C', 'cái', 2),
+    inv('Cồn 5 lít', 'KỆ C', 'can', 1),
+    inv('Dao cạo râu + cream', 'KỆ C', 'bộ', 1),
+    inv('Dung dịch rửa dụng cụ y tế', 'KỆ C', 'chai', 2),
+    inv('Găng tay nhân viên HK glove (S)', 'KỆ C', 'hộp', 3),
+    inv('Găng tay phẫu thuật size S', 'KỆ C', 'hộp', 6),
+    inv('Giấy quấn đầu', 'KỆ C', 'chai', 1),
+    inv('(Cow)', 'KỆ C', 'chai', 1),
+    inv('Kẹp càng cua', 'KỆ C', 'bịch', 3),
+    inv('Khăn lau mặt', 'KỆ C', 'cây', 1),
+    inv('Khẩu trang', 'KỆ C', 'hộp', 3),
+    inv('Khẩu trang y tế túi', 'KỆ C', 'túi', 4),
+    inv('Lược Chà cao su tẩy tế bào chết - màu hồng', 'KỆ C', 'cái', 1),
+    inv('Lược chải rối Off Relax', 'KỆ C', 'cái', 1),
+    inv('Lược gỡ chồng rối tóc', 'KỆ C', 'cái', 9),
+    inv('Lược tắm', 'KỆ C', 'cái', 1),
+    inv('Máy nâng cơ Mini', 'KỆ C', 'cái', 2),
+    inv('Miếng lót úp mặt', 'KỆ C', 'bịch', 4),
+    inv('Mút tẩy trang tròn dẹp', 'KỆ C', 'bịch', 4),
+    inv('Que gỗ - Lưỡi', 'KỆ C', 'hộp', 2),
+    inv('Tăm bông đen', 'KỆ C', 'hộp', 11),
+    inv('Tăm bông gỗ', 'KỆ C', 'bịch', 1),
+    inv('Thước đo tay chân', 'KỆ C', 'cái', 6),
+    inv('Trích máu Lancets', 'KỆ C', 'hộp', 4),
+    inv('Túi xông hơi mặt thảo dược', 'KỆ C', 'túi', 83),
+    inv('Vớ xông hơi ( 5 BỘ)', 'KỆ C', 'cặp', 80),
+    inv('Đầu kim 36 (Cây kim cho máy dr pen)', 'KỆ C', 'cây', 28),
+    inv('Bột Mask Cool', 'KỆ B', 'bịch', 1),
+    
+    // KỆ D - NAIL & MI
+    inv('Gel dã máy Eugo', 'KỆ D', 'bịch', 1),
+    inv('Sáp Wax Lông', 'KỆ E', 'bịch', 9, '2027-12-01'), // Moved slightly based on list
+    inv('Gạc phẫu thuật - Chưa tiệt trùng', 'KỆ D', 'hộp', 5),
+    inv('Màng co 25cm', 'KỆ D', 'cuộn', 2),
+    inv('Miếng lót khay giấy màu hồng', 'KỆ D', 'bịch', 3),
+    inv('Miếng dán mi (Pad mi)', 'KỆ D', 'bịch', 6),
+    inv('Lưới bọc rác', 'KỆ D', 'bịch', 2),
+    inv('Oil dưỡng móng - hộp màu xanh lá + blue', 'KỆ D', 'cây', 13),
+    inv('Gel Tẩy tế bào chết chân', 'KỆ D', 'chai', 3, '2026-02-01'),
+    inv('Mặt nạ tay dưỡng ẩm RNW', 'KỆ D', 'chai', 1, '2026-09-01'),
+    inv('Mặt nạ ủ tóc RNW', 'KỆ D', 'gói', 12, '2026-03-01'),
+    inv('Kềm vàng', 'KỆ D', 'cây', 10, '2026-06-01'),
+    inv('Gel vệ sinh ghế da', 'KỆ D', 'chai', 5, '2026-07-01'),
+    inv('DrBear Sữa dưỡng ẩm làm trắng body', 'KỆ D', 'chai', 8, '2026-08-01'),
+    inv('Mặt nạ tóc RNW', 'KỆ D', 'Hũ viền', 1, '2026-08-01'),
+    inv('Dầu gội RNW', 'KỆ D', 'chai', 1, '2027-09-01'),
+    inv('Dr Hou Tinh chất trắng da White essen', 'KỆ D', 'Hộp', 1, '2026-09-01'),
+    inv('Soap pink for women L qualyn', 'KỆ D', 'Hộp', 1, '2026-09-01'),
+    inv('Miếng dán lột mụn RNW', 'KỆ D', 'Túi', 5, '2026-10-01'),
+    inv('Tuýp dưỡng môi Bubble Lip Mash', 'KỆ D', 'Tuýp', 3, '2026-10-01'),
+    inv('Eye Film BOH', 'KỆ D', 'Hộp', 1, '2026-11-01'),
+    inv('Bọt rửa mi Caudalive', 'KỆ D', 'Chai', 1, '2027-02-01'),
+    
+    // FILLER/BOTOX/THUỐC (KỆ E, TỦ LẠNH)
+    inv('Jalupro', 'BAP', 'hộp', 1),
+    inv('Profhilo', 'BAP', 'hộp', 1),
+    inv('Karisma', 'BAP', 'hộp', 1),
+    inv('Vết chân chim (đuôi mắt 2 bên)', 'BOTOX', 'lọ', 1),
+    inv('Trán', 'BOTOX', 'lọ', 1),
+    inv('Cau mày', 'BOTOX', 'lọ', 1),
+    inv('Hộp Rejuran I', 'KỆ E', 'hộp', 1, '2026-07-01'),
+    inv('Hộp Rejuran with PN', 'KỆ E', 'hộp', 2, '2026-08-01'),
+    inv('Hộp Jalupro Professional', 'KỆ E', 'hộp', 1, '2026-01-01'),
+    inv('Elasty Filler', 'KỆ E', 'hộp', 1, '2026-07-01'),
+    inv('Hộp Jalupro Young Eye', 'KỆ E', 'hộp', 8, '2026-04-01'),
+    inv('Karisma', 'KỆ E', 'hộp', 3, '2027-04-01'),
+    inv('Fussion F-HA', 'KỆ E', 'lọ', 4, '2028-07-01'),
+    inv('Aileene Vol #3', 'KỆ E', 'hộp', 1),
+    inv('Botox 100', 'KỆ E', 'hộp', 4),
+    inv('Botox 200', 'KỆ E', 'hộp', 1),
+    inv('Teosyal 1', 'KỆ E', 'hộp', 1),
+    inv('Tiêm tiểu đường nắp cam Omnican', 'KỆ E', 'cái', 100),
+    inv('Hộp Jalupro Super Hydro', 'KỆ E', 'hộp', 3),
 ];

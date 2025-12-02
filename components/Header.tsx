@@ -6,8 +6,8 @@ interface HeaderProps {
   currentUser: User;
   onSwitchRole: (role: Role) => void;
   onUpdateUserName: (newName: string) => void;
-  currentView: 'dashboard' | 'services' | 'users';
-  onViewChange: (view: 'dashboard' | 'services' | 'users') => void;
+  currentView: 'dashboard' | 'services' | 'users' | 'inventory';
+  onViewChange: (view: 'dashboard' | 'services' | 'users' | 'inventory') => void;
   onLogout: () => void;
 }
 
@@ -32,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUser
           <JuSpaLogo />
           <div className="flex flex-col">
               <h1 className="text-xl md:text-2xl font-light text-[#5C3A3A] hidden md:block">Promotion Manager</h1>
-              <div className="mt-2 flex items-center space-x-2 border border-gray-200 p-1 rounded-lg bg-gray-50">
+              <div className="mt-2 flex flex-wrap items-center gap-2 border border-gray-200 p-1 rounded-lg bg-gray-50">
                   <button 
                       onClick={() => onViewChange('dashboard')} 
                       className={`${navButtonStyle} ${currentView === 'dashboard' ? activeStyle : inactiveStyle}`}
@@ -44,6 +44,12 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUser
                       className={`${navButtonStyle} ${currentView === 'services' ? activeStyle : inactiveStyle}`}
                   >
                       Services
+                  </button>
+                  <button 
+                      onClick={() => onViewChange('inventory')}
+                      className={`${navButtonStyle} ${currentView === 'inventory' ? activeStyle : inactiveStyle}`}
+                  >
+                      Inventory (Kho)
                   </button>
                   {currentUser.role === Role.Management && (
                     <button 
