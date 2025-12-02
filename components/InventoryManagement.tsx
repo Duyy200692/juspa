@@ -9,7 +9,6 @@ interface InventoryManagementProps {
   currentUser: User;
   onImportItem: (itemId: string, quantity: number, notes?: string) => Promise<void>;
   onExportItem: (itemId: string, quantity: number, reason: string) => Promise<void>;
-  // New prop to force seed data
   onSeedData: () => Promise<void>;
 }
 
@@ -65,6 +64,11 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
   const [tab, setTab] = useState<'stock' | 'history'>('stock');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLocation, setFilterLocation] = useState('all');
+  
+  // History Filters State
+  const [historyMonth, setHistoryMonth] = useState<string>('all');
+  const [historyYear, setHistoryYear] = useState<string>('all');
+
   const [modalState, setModalState] = useState<{isOpen: boolean, type: 'in'|'out', item: InventoryItem | null}>({isOpen: false, type: 'in', item: null});
   const [isSeeding, setIsSeeding] = useState(false);
 
@@ -77,6 +81,23 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
           return matchSearch && matchLoc;
       });
   }, [items, searchTerm, filterLocation]);
+
+  // Available Years for History Filter
+  const availableYears = useMemo(() => {
+      const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
+      years.add(new Date().getFullYear());
+      return Array.from(years).sort((a, b) => b - a);
+  }, [transactions]);
+
+  // Filter Transactions Logic
+  const filteredTransactions = useMemo(() => {
+      return transactions.filter(t => {
+          const date = new Date(t.date);
+          const matchMonth = historyMonth === 'all' || (date.getMonth() + 1).toString() === historyMonth;
+          const matchYear = historyYear === 'all' || date.getFullYear().toString() === historyYear;
+          return matchMonth && matchYear;
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, historyMonth, historyYear]);
 
   const getExpiryStatus = (dateString?: string) => {
       if (!dateString) return null;
@@ -116,13 +137,14 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
                 <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Quản lý Kho (Inventory)</h2>
-                {(currentUser.role === Role.Management || currentUser.role === Role.Accountant) && items.length === 0 && (
+                {(currentUser.role === Role.Management || currentUser.role === Role.Accountant) && (
                     <button 
                         onClick={handleSeedClick} 
                         disabled={isSeeding}
-                        className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded border border-gray-300 flex items-center gap-1"
+                        className="text-xs bg-white hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded border border-gray-300 flex items-center gap-1 shadow-sm transition-colors"
+                        title="Nạp lại danh sách hàng hóa mẫu từ hệ thống"
                     >
-                        {isSeeding ? 'Đang nạp...' : '🔄 Nạp dữ liệu gốc'}
+                        {isSeeding ? 'Đang xử lý...' : '🔄 Nạp dữ liệu gốc'}
                     </button>
                 )}
             </div>
@@ -204,6 +226,37 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
 
         {tab === 'history' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
+                {/* NEW: Time Filters Bar */}
+                <div className="p-4 bg-[#FDF7F8] border-b border-pink-100 flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-bold text-[#D97A7D] flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        Lọc theo thời gian:
+                    </span>
+                    <select 
+                        value={historyMonth} 
+                        onChange={(e) => setHistoryMonth(e.target.value)}
+                        className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-[#E5989B] bg-white cursor-pointer"
+                    >
+                        <option value="all">Tất cả các tháng</option>
+                        {Array.from({ length: 12 }, (_, i) => (
+                            <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
+                        ))}
+                    </select>
+                    <select 
+                        value={historyYear} 
+                        onChange={(e) => setHistoryYear(e.target.value)}
+                        className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-[#E5989B] bg-white cursor-pointer"
+                    >
+                        <option value="all">Tất cả các năm</option>
+                        {availableYears.map(year => (
+                            <option key={year} value={year}>Năm {year}</option>
+                        ))}
+                    </select>
+                    {(historyMonth !== 'all' || historyYear !== 'all') && (
+                        <button onClick={() => { setHistoryMonth('all'); setHistoryYear('all'); }} className="text-xs text-red-500 hover:underline ml-2">Xóa lọc</button>
+                    )}
+                </div>
+
                 <div className="overflow-x-auto max-h-[70vh]">
                     <table className="min-w-full whitespace-nowrap">
                         <thead className="bg-gray-50 sticky top-0 z-10">
@@ -217,7 +270,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {transactions.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
+                            {filteredTransactions.length > 0 ? filteredTransactions.map(tx => (
                                 <tr key={tx.id} className="hover:bg-gray-50">
                                     <td className="py-3 px-4 text-sm text-gray-600">{new Date(tx.date).toLocaleString('vi-VN')}</td>
                                     <td className="py-3 px-4 text-sm font-medium text-gray-900">{tx.performedBy}</td>
@@ -230,8 +283,9 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
                                     <td className="py-3 px-4 text-right text-sm font-bold text-gray-700">{tx.quantity}</td>
                                     <td className="py-3 px-4 text-sm text-gray-500 italic">{tx.reason || '-'}</td>
                                 </tr>
-                            ))}
-                            {transactions.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-gray-400">Chưa có lịch sử giao dịch.</td></tr>}
+                            )) : (
+                                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Không tìm thấy giao dịch nào trong khoảng thời gian này.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
