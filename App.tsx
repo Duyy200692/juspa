@@ -9,7 +9,7 @@ import ServiceManagement from './components/ServiceManagement';
 import LoginScreen from './components/LoginScreen';
 import UserManagement from './components/UserManagement';
 import LandingPage from './components/LandingPage';
-import InventoryManagement from './components/InventoryManagement'; // Import new component
+import InventoryManagement from './components/InventoryManagement';
 import { User, Promotion, Service, Role, InventoryItem, InventoryTransaction } from './types';
 import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS, INVENTORY_ITEMS as DEFAULT_INVENTORY } from './constants';
 
@@ -20,8 +20,8 @@ const App: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]); // State for Inventory
-  const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]); // State for Transactions
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]);
   
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [view, setView] = useState<View>('dashboard');
@@ -66,19 +66,6 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
-            // Check Inventory - SEEDING
-            const inventorySnap = await getDocs(collection(db, 'inventory'));
-            if (inventorySnap.empty) {
-                console.log("No inventory found. Seeding default inventory items...");
-                // Process in chunks of 500 (Firestore batch limit) though we have fewer
-                const batch = writeBatch(db);
-                DEFAULT_INVENTORY.forEach(item => {
-                    const docRef = doc(db, 'inventory', item.id);
-                    batch.set(docRef, item);
-                });
-                await batch.commit();
-            }
-
         } catch (err) {
             console.error("Error seeding data:", err);
         }
@@ -100,7 +87,6 @@ const App: React.FC = () => {
             setPromotions(loadedPromotions);
         });
 
-        // Inventory Listeners
         const unsubInventory = onSnapshot(query(collection(db, "inventory")), (snapshot) => {
             const loadedItems = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryItem));
             setInventoryItems(loadedItems);
@@ -132,7 +118,7 @@ const App: React.FC = () => {
 
   }, []);
 
-  // --- Computed Values ---
+  // ... (Computed Values & Auth - Unchanged) ...
   const activePromotions = useMemo(() => {
     const now = new Date();
     return promotions.filter(p => 
@@ -149,7 +135,6 @@ const App: React.FC = () => {
     );
   }, [promotions]);
 
-  // --- Auth Handlers ---
   const handleLogin = (username: string, password: string) => {
       const user = users.find(u => u.username === username && u.password === password);
       if (user) {
@@ -170,7 +155,6 @@ const App: React.FC = () => {
       setShowLanding(false);
   };
 
-  // --- Role Switching Logic ---
     const handleSwitchRole = (newRole: Role) => {
       const targetUser = users.find(u => u.role === newRole);
       if (targetUser) {
@@ -183,15 +167,14 @@ const App: React.FC = () => {
       }
   };
 
-  // --- User Profile Updates ---
   const handleUpdateUserName = async (newName: string) => {
     if (loggedInUser) {
         const userRef = doc(db, 'users', loggedInUser.id);
-        await updateDoc(userRef, { name: newName });
+        await updateDoc(userRef, { name: newName } as { [key: string]: any });
     }
   };
 
-  // --- Actions: Users (Firebase) ---
+  // --- Actions ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newId = `user-${Date.now()}`;
     const userRef = doc(db, 'users', newId);
@@ -202,7 +185,6 @@ const App: React.FC = () => {
       await deleteDoc(doc(db, 'users', userId));
   };
 
-  // --- Actions: Promotions (Firebase) ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
     const newId = `promo-${Date.now()}`;
     const promoRef = doc(db, 'promotions', newId);
@@ -218,7 +200,6 @@ const App: React.FC = () => {
     await deleteDoc(doc(db, 'promotions', promotionId));
   };
 
-  // --- Actions: Services (Firebase) ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
     const newId = `service-${Date.now()}`;
     const serviceRef = doc(db, 'services', newId);
@@ -234,7 +215,7 @@ const App: React.FC = () => {
     await deleteDoc(doc(db, 'services', serviceId));
   }
 
-  // --- Actions: Inventory (Firebase) ---
+  // --- Inventory Actions ---
   const importInventoryItem = async (itemId: string, quantity: number, notes?: string) => {
       if (!loggedInUser) return;
       const item = inventoryItems.find(i => i.id === itemId);
@@ -243,9 +224,8 @@ const App: React.FC = () => {
       const newQty = item.quantity + quantity;
       const itemRef = doc(db, 'inventory', itemId);
       
-      await updateDoc(itemRef, { quantity: newQty });
+      await updateDoc(itemRef, { quantity: newQty } as { [key: string]: any });
 
-      // Record transaction
       await addDoc(collection(db, 'inventory_transactions'), {
           itemId,
           itemName: item.name,
@@ -267,9 +247,8 @@ const App: React.FC = () => {
       const newQty = Math.max(0, item.quantity - quantity);
       const itemRef = doc(db, 'inventory', itemId);
       
-      await updateDoc(itemRef, { quantity: newQty });
+      await updateDoc(itemRef, { quantity: newQty } as { [key: string]: any });
 
-      // Record transaction
       await addDoc(collection(db, 'inventory_transactions'), {
           itemId,
           itemName: item.name,
@@ -283,7 +262,22 @@ const App: React.FC = () => {
       });
   };
 
-  // --- Main Render Flow ---
+  const handleForceSeedInventory = async () => {
+      try {
+          console.log("Starting force seed with", DEFAULT_INVENTORY.length, "items.");
+          const batch = writeBatch(db);
+          DEFAULT_INVENTORY.forEach(item => {
+              const docRef = doc(db, 'inventory', item.id);
+              batch.set(docRef, item);
+          });
+          await batch.commit();
+          alert(`Đã nạp thành công ${DEFAULT_INVENTORY.length} mặt hàng vào kho!`);
+      } catch (e) {
+          console.error(e);
+          alert("Lỗi khi nạp dữ liệu: " + e);
+      }
+  };
+
   if (isLoading) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">
@@ -339,6 +333,7 @@ const App: React.FC = () => {
                 currentUser={loggedInUser}
                 onImportItem={importInventoryItem}
                 onExportItem={exportInventoryItem}
+                onSeedData={handleForceSeedInventory} // Pass force seed handler
             />
         )}
 
