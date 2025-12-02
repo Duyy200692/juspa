@@ -31,12 +31,10 @@ const App: React.FC = () => {
   // --- Firebase Real-time Listener ---
   useEffect(() => {
     const seedInitialData = async () => {
-        console.log("Checking for initial data...");
         try {
-            // 1. Check & Seed Users
+            // Check users
             const usersSnap = await getDocs(collection(db, 'users'));
             if (usersSnap.empty) {
-                console.log("Seeding users...");
                 const batch = writeBatch(db);
                 DEFAULT_USERS.forEach(user => {
                     const docRef = doc(db, 'users', user.id);
@@ -44,11 +42,9 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
-
-            // 2. Check & Seed Services
+            // Check services
             const servicesSnap = await getDocs(collection(db, 'services'));
             if (servicesSnap.empty) {
-                console.log("Seeding services...");
                 const batch = writeBatch(db);
                 DEFAULT_SERVICES.forEach(service => {
                     const docRef = doc(db, 'services', service.id);
@@ -56,11 +52,9 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
-
-             // 3. Check & Seed Promotions
+             // Check promotions
             const promotionsSnap = await getDocs(collection(db, 'promotions'));
             if (promotionsSnap.empty) {
-                console.log("Seeding promotions...");
                 const batch = writeBatch(db);
                 DEFAULT_PROMOTIONS.forEach(promo => {
                     const docRef = doc(db, 'promotions', promo.id);
@@ -68,12 +62,9 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
-
-            // 4. Check & Seed Inventory (QUAN TRỌNG: Nạp dữ liệu kho từ constants.ts)
+            // Check Inventory
             const inventorySnap = await getDocs(collection(db, 'inventory'));
             if (inventorySnap.empty) {
-                console.log("Seeding inventory...");
-                // Firestore batch limit is 500, our list is smaller so one batch is fine
                 const batch = writeBatch(db);
                 DEFAULT_INVENTORY.forEach(item => {
                     const docRef = doc(db, 'inventory', item.id);
@@ -81,14 +72,12 @@ const App: React.FC = () => {
                 });
                 await batch.commit();
             }
-
         } catch (err) {
             console.error("Error seeding data:", err);
         }
     };
 
     const setupListeners = () => {
-        // Listeners for all collections
         const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
             const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
             setUsers(loadedUsers);
@@ -135,8 +124,7 @@ const App: React.FC = () => {
 
   }, []);
 
-  // ... (Rest of logic: Computed Values, Auth Handlers) ...
-  // Giữ nguyên phần logic tính toán và đăng nhập như bản trước
+  // ... (Computed Values & Auth - Unchanged) ...
   const activePromotions = useMemo(() => {
     const now = new Date();
     return promotions.filter(p => 
@@ -233,8 +221,9 @@ const App: React.FC = () => {
     await deleteDoc(doc(db, 'services', serviceId));
   }
 
-  // Inventory Actions
-  const importInventoryItem = async (itemId: string, quantity: number, notes?: string) => {
+  // --- Inventory Actions ---
+  // UPDATED: Added expiryDate parameter
+  const importInventoryItem = async (itemId: string, quantity: number, notes?: string, expiryDate?: string) => {
       if (!loggedInUser) return;
       const item = inventoryItems.find(i => i.id === itemId);
       if (!item) return;
@@ -242,7 +231,12 @@ const App: React.FC = () => {
       const newQty = item.quantity + quantity;
       const itemRef = doc(db, 'inventory', itemId);
       
-      await updateDoc(itemRef, { quantity: newQty } as { [key: string]: any });
+      const updateData: any = { quantity: newQty };
+      if (expiryDate) {
+          updateData.expiryDate = expiryDate;
+      }
+      
+      await updateDoc(itemRef, updateData);
 
       await addDoc(collection(db, 'inventory_transactions'), {
           itemId,
@@ -351,7 +345,7 @@ const App: React.FC = () => {
                 currentUser={loggedInUser}
                 onImportItem={importInventoryItem}
                 onExportItem={exportInventoryItem}
-                onSeedData={handleForceSeedInventory} // Pass force seed handler
+                onSeedData={handleForceSeedInventory} 
             />
         )}
 

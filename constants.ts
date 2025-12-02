@@ -1,446 +1,332 @@
-import { User, Service, Promotion, Role, PromotionStatus, InventoryItem } from './types';
+import React, { useState, useMemo } from 'react';
+import { InventoryItem, InventoryTransaction, User, Role } from '../types';
+import Button from './shared/Button';
+import Modal from './shared/Modal';
 
-// Default users
-export const USERS: User[] = [
-  { id: 'user-product', name: 'Team Product', role: Role.Product, username: 'product', password: '1' },
-  { id: 'user-mkt', name: 'Team Marketing', role: Role.Marketing, username: 'mkt', password: '1' },
-  { id: 'user-boss', name: 'Julie Nguyễn', role: Role.Management, username: 'admin', password: '1' },
-  { id: 'user-reception', name: 'Lễ Tân', role: Role.Reception, username: 'reception', password: '1' },
-  { id: 'user-accountant', name: 'Kế Toán', role: Role.Accountant, username: 'ketoan', password: '1' },
-];
+interface InventoryManagementProps {
+  items: InventoryItem[];
+  transactions: InventoryTransaction[];
+  currentUser: User;
+  onImportItem: (itemId: string, quantity: number, notes?: string, expiryDate?: string) => Promise<void>;
+  onExportItem: (itemId: string, quantity: number, reason: string) => Promise<void>;
+  onSeedData: () => Promise<void>;
+}
 
-// Helper to create mock pricing
-const createService = (id: string, name: string, category: string, desc: string, basePrice: number, discountPercent: number = 0, note: string = '', type: 'single' | 'combo' = 'single'): Service => {
-    const pricePromo = discountPercent > 0 
-        ? basePrice * (1 - discountPercent / 100)
-        : Math.round(basePrice * 0.5 / 1000) * 1000;
+interface ActionModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    type: 'in' | 'out';
+    item: InventoryItem | null;
+    onSubmit: (qty: number, note: string, expiry?: string) => void;
+}
 
-    return {
-        id,
-        name,
-        category,
-        description: desc,
-        type,
-        consultationNote: note,
-        priceOriginal: basePrice,
-        discountPercent: discountPercent,
-        pricePromo: pricePromo, 
-        pricePackage5: basePrice * 5,
-        pricePackage15: basePrice * 10,
-        pricePackage3: basePrice * 3 * 0.95,
-        pricePackage5Sessions: basePrice * 5 * 0.9, 
-        pricePackage10: basePrice * 10 * 0.85, 
-        pricePackage20: basePrice * 20 * 0.8, 
+const ActionModal: React.FC<ActionModalProps> = ({ isOpen, onClose, type, item, onSubmit }) => {
+    const [qty, setQty] = useState(1);
+    const [note, setNote] = useState('');
+    const [newExpiry, setNewExpiry] = useState('');
+
+    // Reset date when modal opens
+    React.useEffect(() => {
+        if (isOpen) setNewExpiry('');
+    }, [isOpen]);
+
+    if (!isOpen || !item) return null;
+
+    const handleSubmit = () => {
+        if (qty <= 0) return alert("Số lượng phải lớn hơn 0");
+        if (type === 'out' && qty > item.quantity) return alert("Số lượng xuất vượt quá tồn kho!");
+        onSubmit(qty, note, newExpiry);
+        onClose();
+        setQty(1);
+        setNote('');
+        setNewExpiry('');
     };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={type === 'in' ? `Nhập Kho: ${item.name}` : `Xuất Kho: ${item.name}`}>
+            <div className="space-y-4">
+                <div className="p-3 bg-gray-50 rounded border border-gray-200 text-sm">
+                    <p>Đơn vị tính: <span className="font-bold">{item.unit}</span></p>
+                    <p>Hiện tồn: <span className="font-bold text-[#D97A7D]">{item.quantity}</span></p>
+                    <p>Vị trí: <span className="font-medium">{item.location}</span></p>
+                    {item.expiryDate && <p>Hạn dùng hiện tại: <span className="text-blue-600">{item.expiryDate}</span></p>}
+                </div>
+                
+                {/* Expiry Date Input for Import */}
+                {type === 'in' && (
+                    <div className="bg-blue-50 p-3 rounded border border-blue-100">
+                        <label className="block text-xs font-bold text-blue-800 mb-1">Cập nhật Hạn dùng mới (Tùy chọn)</label>
+                        <input 
+                            type="date" 
+                            value={newExpiry} 
+                            onChange={e => setNewExpiry(e.target.value)} 
+                            className="w-full border border-blue-300 rounded p-2 text-sm focus:ring-blue-500"
+                        />
+                        <p className="text-[10px] text-blue-500 mt-1 italic">Chọn ngày nếu muốn cập nhật hạn sử dụng cho lô hàng này.</p>
+                    </div>
+                )}
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Số lượng {type === 'in' ? 'Nhập' : 'Xuất'}</label>
+                    <input type="number" min="1" value={qty} onChange={e => setQty(Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#E5989B]" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{type === 'in' ? 'Ghi chú (Tùy chọn)' : 'Lý do / Người nhận (Bắt buộc)'}</label>
+                    <textarea value={note} onChange={e => setNote(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" rows={2} placeholder={type === 'out' ? "VD: Dùng cho khách, Hư hỏng..." : "VD: Nhập hàng mới"}></textarea>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="secondary" onClick={onClose}>Hủy</Button>
+                    <Button onClick={handleSubmit}>{type === 'in' ? 'Xác nhận Nhập' : 'Xác nhận Xuất'}</Button>
+                </div>
+            </div>
+        </Modal>
+    );
 };
 
-export const SERVICES: Service[] = [
-  createService('combo-rf-h-classic', 'RF + Hydrafacial (classic)', 'Combo Đặc Biệt', '', 6500000, 60, '', 'combo'),
-  createService('combo-rf-h-sysnature', 'RF + Hydrafacial (sysnature)', 'Combo Đặc Biệt', '', 7600000, 60, '', 'combo'),
-  createService('combo-rf-h-platinum', 'RF + Hydrafacial (platinum)', 'Combo Đặc Biệt', '', 9600000, 60, '', 'combo'),
-  createService('rf-mat-matnong', 'RF mặt - mắt/nọng', 'Công nghệ RF', 'Thời lượng 30 phút', 4500000, 50),
-  createService('rf-c+', 'C+', 'Công nghệ RF', '15 phút', 900000, 50),
-  createService('rf-add-vitamin', 'Add Vitamin', 'Công nghệ RF', '15 phút', 900000, 50),
-  createService('rf-mat', 'Mặt', 'Công nghệ RF', '30 phút', 3900000, 50),
-  createService('rf-nong', 'Nọng', 'Công nghệ RF', '15 phút', 1800000, 50),
-  createService('rf-mat-2', 'Mắt', 'Công nghệ RF', '10 phút', 1500000, 50),
-  createService('rf-bap-tay', 'Bắp tay', 'Công nghệ RF', '30 phút', 2500000, 50),
-  createService('rf-dui', 'Đùi', 'Công nghệ RF', '40 phút', 3000000, 50),
-  createService('rf-bap-chuoi', 'Bắp chuối', 'Công nghệ RF', '30 phút', 3000000, 50),
-  createService('rf-bung', 'Bụng', 'Công nghệ RF', '30 phút', 3500000, 50),
-  createService('rf-that-lung-eo', 'Thắt lưng + Eo', 'Công nghệ RF', '30 phút', 3000000, 50),
-  createService('hf-classic', 'Classic', 'Hydrafacial', '90 phút', 4600000, 60),
-  createService('hf-sysnature', 'Sysnature', 'Hydrafacial', '105 phút', 5600000, 60),
-  createService('hf-platinum', 'Platinum', 'Hydrafacial', '120 phút', 8900000, 60),
-  createService('hf-body-lung', 'Body lưng', 'Hydrafacial', '45 phút', 5800000, 60),
-  createService('hf-body-nguc', 'Body ngực', 'Hydrafacial', '45 phút', 5000000, 60),
-  createService('hf-3-vung-body', '3 vùng body', 'Hydrafacial', '90 phút', 8000000, 60),
-  createService('geneo-rf', 'KO RF', 'GeneoX Pro', '60 phút', 4500000, 50),
-  createService('geneo-acid-neck', 'Acid Neck', 'GeneoX Pro', '30 phút', 1200000, 50),
-  createService('hr-1', 'Mép trên', 'Triệt Lông', 'Triệt lông vùng mép trên', 750000, 30, '1. Cạo lông\n2. Bôi Gel lạnh\n3. Bắn laser\n4. Dưỡng da'),
-  createService('hr-2', 'Nách/Trán/Cằm', 'Triệt Lông', 'Triệt lông vùng nách, trán, hoặc cằm', 950000, 30),
-  createService('hr-3', '1/2 Tay', 'Triệt Lông', 'Triệt lông 1/2 cánh tay', 1200000, 30),
-  createService('hr-4', '1/2 Chân', 'Triệt Lông', 'Triệt lông 1/2 chân', 1500000, 30),
-  createService('hr-5', 'Toàn mặt', 'Triệt Lông', 'Triệt lông toàn bộ mặt', 1800000, 30),
-  createService('hr-6', 'Ngực/Bụng', 'Triệt Lông', 'Triệt lông vùng ngực hoặc bụng', 1800000, 30),
-  createService('hr-7', 'Full tay', 'Triệt Lông', 'Triệt lông toàn bộ cánh tay', 1800000, 30),
-  createService('hr-8', 'Full chân', 'Triệt Lông', 'Triệt lông toàn bộ chân', 2000000, 30),
-  createService('hr-9', 'Bikini/Tạo hình', 'Triệt Lông', 'Triệt lông và tạo hình vùng bikini', 1800000, 30),
-  createService('hr-10', 'Lưng', 'Triệt Lông', 'Triệt lông vùng lưng', 2400000, 30),
-  createService('hr-11', 'Tay + Chân + Nách', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và nách', 4200000, 30, '', 'combo'),
-  createService('hr-12', 'Tay + Chân + Mặt', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và mặt', 4800000, 30, '', 'combo'),
-  createService('hr-13', 'Tay + Chân + Bi', 'Combo Triệt Lông', 'Combo triệt lông tay, chân, và bikini', 4800000, 30, '', 'combo'),
-  createService('hr-14', 'Toàn thân', 'Combo Triệt Lông', 'Triệt lông toàn thân', 9600000, 30, '', 'combo'),
-  createService('service-old-3', 'Crystal Skin Therapy', 'Chăm sóc da', 'Thanh lọc – tái tạo – cấp ẩm đa tầng', 2500000, 64),
-  createService('service-old-4', 'Bliss & Balance 105’', 'Thư giãn', '45’ Relaxing Hair Wash + 60 JU Signature Massage', 800000, 19),
-  createService('service-old-5', 'Oxy Boots', 'Chăm sóc da', 'Công nghệ bơm oxy áp lực cao', 1800000, 11),
-];
+const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transactions, currentUser, onImportItem, onExportItem, onSeedData }) => {
+  const [tab, setTab] = useState<'stock' | 'history'>('stock');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterLocation, setFilterLocation] = useState('all');
+  
+  // History Filters
+  const [historyMonth, setHistoryMonth] = useState<string>('all');
+  const [historyYear, setHistoryYear] = useState<string>('all');
 
-export const PROMOTIONS: Promotion[] = [
-  {
-    id: 'promo-1',
-    name: 'Flash Sale Tháng 12',
-    startDate: '2025-11-25',
-    endDate: '2025-12-15',
-    status: PromotionStatus.Approved,
-    proposerId: 'user-product',
-    designUrl: 'https://picsum.photos/1080/1920',
-    salesNotes: "Chương trình sale cuối năm để kích cầu.",
-    marketingNotes: "Design theo tone hồng chủ đạo, nhẹ nhàng.",
-    services: [
-      { ...SERVICES[26], fullPrice: SERVICES[26].priceOriginal, discountPrice: 2250000 },
-      { ...SERVICES[27], fullPrice: SERVICES[27].priceOriginal, discountPrice: 1950000 },
-      { ...SERVICES[28], fullPrice: SERVICES[28].priceOriginal, discountPrice: 899000 },
-    ]
-  },
-  {
-    id: 'promo-2',
-    name: 'Đón Hè Rạng Rỡ',
-    startDate: '2025-06-01',
-    endDate: '2025-06-30',
-    status: PromotionStatus.PendingDesign,
-    proposerId: 'user-product',
-    salesNotes: "Tập trung vào các dịch vụ làm sáng da và thư giãn.",
-    services: [
-      { ...SERVICES[26], fullPrice: SERVICES[26].priceOriginal, discountPrice: 3500000 },
-      { ...SERVICES[28], fullPrice: SERVICES[28].priceOriginal, discountPrice: 2000000 },
-    ]
-  },
-  {
-    id: 'promo-3',
-    name: 'Tri Ân Phái Đẹp',
-    startDate: '2025-10-10',
-    endDate: '2025-10-20',
-    status: PromotionStatus.PendingApproval,
-    proposerId: 'user-product',
-    designUrl: 'https://picsum.photos/1080/1920',
-    salesNotes: "Chương trình cho ngày 20/10.",
-    marketingNotes: "Thiết kế đã xong, chờ sếp duyệt.",
-    services: [
-       { ...SERVICES[30], fullPrice: SERVICES[30].priceOriginal, discountPrice: 1500000 },
-    ]
+  const [modalState, setModalState] = useState<{isOpen: boolean, type: 'in'|'out', item: InventoryItem | null}>({isOpen: false, type: 'in', item: null});
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  // FIX: Sort locations alphabetically
+  const locations = useMemo(() => Array.from(new Set(items.map(i => i.location))).sort((a, b) => a.localeCompare(b)), [items]);
+
+  const filteredItems = useMemo(() => {
+      return items.filter(item => {
+          const matchSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+          const matchLoc = filterLocation === 'all' || item.location === filterLocation;
+          return matchSearch && matchLoc;
+      });
+  }, [items, searchTerm, filterLocation]);
+
+  const availableYears = useMemo(() => {
+      const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
+      years.add(new Date().getFullYear());
+      return Array.from(years).sort((a, b) => b - a);
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+      return transactions.filter(t => {
+          const date = new Date(t.date);
+          const matchMonth = historyMonth === 'all' || (date.getMonth() + 1).toString() === historyMonth;
+          const matchYear = historyYear === 'all' || date.getFullYear().toString() === historyYear;
+          return matchMonth && matchYear;
+      }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, historyMonth, historyYear]);
+
+  const getExpiryStatus = (dateString?: string) => {
+      if (!dateString) return null;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const expiry = new Date(dateString);
+      const diffTime = expiry.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) return { label: `Đã hết hạn (${Math.abs(diffDays)} ngày)`, color: 'bg-gray-800 text-white border-gray-600' };
+      if (diffDays <= 30) return { label: `Nguy hiểm (${diffDays} ngày)`, color: 'bg-red-100 text-red-700 border-red-200 animate-pulse' };
+      if (diffDays <= 60) return { label: `Cảnh báo (${diffDays} ngày)`, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+      return { label: `An toàn (${diffDays} ngày)`, color: 'bg-green-50 text-green-600 border-green-100' };
+  };
+
+  const openModal = (type: 'in' | 'out', item: InventoryItem) => {
+      setModalState({ isOpen: true, type, item });
+  };
+
+  const handleAction = async (qty: number, note: string, expiry?: string) => {
+      if (!modalState.item) return;
+      if (modalState.type === 'in') {
+          await onImportItem(modalState.item.id, qty, note, expiry);
+      } else {
+          await onExportItem(modalState.item.id, qty, note);
+      }
+  };
+
+  const handleSeedClick = async () => {
+      if (window.confirm("Bạn có chắc chắn muốn nạp lại dữ liệu gốc? Hành động này sẽ thêm hơn 100 sản phẩm mẫu vào kho.")) {
+          setIsSeeding(true);
+          await onSeedData();
+          setIsSeeding(false);
+      }
   }
-];
 
-// FIX: Helper to create Inventory Item safely without undefined values
-const inv = (name: string, location: string, unit: string, qty: number, expiry?: string): InventoryItem => {
-    // Create base object
-    const item: any = {
-        id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name, 
-        location, 
-        unit, 
-        quantity: qty
-    };
-    
-    // Only add expiryDate if it exists, to avoid sending 'undefined' to Firestore
-    if (expiry) {
-        item.expiryDate = expiry;
-    }
-    
-    return item as InventoryItem;
+  return (
+    <div className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-4">
+                <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Quản lý Kho (Inventory)</h2>
+                {(currentUser.role === Role.Management || currentUser.role === Role.Accountant) && (
+                    <button 
+                        onClick={handleSeedClick} 
+                        disabled={isSeeding}
+                        className="text-xs bg-white hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded border border-gray-300 flex items-center gap-1 shadow-sm transition-colors"
+                        title="Nạp lại danh sách hàng hóa mẫu từ hệ thống"
+                    >
+                        {isSeeding ? 'Đang xử lý...' : '🔄 Nạp dữ liệu gốc'}
+                    </button>
+                )}
+            </div>
+            <div className="flex space-x-2 bg-white rounded-lg p-1 border border-gray-200">
+                <button onClick={() => setTab('stock')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === 'stock' ? 'bg-pink-100 text-[#D97A7D]' : 'text-gray-600 hover:bg-gray-50'}`}>Danh sách Tồn kho</button>
+                <button onClick={() => setTab('history')} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === 'history' ? 'bg-pink-100 text-[#D97A7D]' : 'text-gray-600 hover:bg-gray-50'}`}>Lịch sử Nhập/Xuất</button>
+            </div>
+        </div>
+
+        {tab === 'stock' && (
+            <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
+                <div className="p-4 bg-[#FDF7F8] border-b border-pink-100 flex flex-col md:flex-row gap-4">
+                    <input 
+                        type="text" 
+                        placeholder="Tìm kiếm tên sản phẩm..." 
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="flex-1 border border-gray-300 rounded-md p-2 text-sm focus:ring-[#E5989B] focus:border-[#E5989B]"
+                    />
+                    <select 
+                        value={filterLocation} 
+                        onChange={e => setFilterLocation(e.target.value)}
+                        className="border border-gray-300 rounded-md p-2 text-sm bg-white focus:ring-[#E5989B]"
+                    >
+                        <option value="all">Tất cả vị trí</option>
+                        {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                    </select>
+                </div>
+                <div className="overflow-x-auto max-h-[70vh]">
+                    <table className="min-w-full whitespace-nowrap">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Tên sản phẩm</th>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Vị trí</th>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Đơn vị</th>
+                                <th className="py-3 px-4 text-center text-xs font-bold text-gray-500 uppercase">Hạn dùng</th>
+                                <th className="py-3 px-4 text-center text-xs font-bold text-gray-500 uppercase">Trạng thái Date</th>
+                                <th className="py-3 px-4 text-center text-xs font-bold text-gray-500 uppercase">Tồn kho</th>
+                                <th className="py-3 px-4 text-right text-xs font-bold text-gray-500 uppercase">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {filteredItems.map(item => {
+                                const expiryStatus = getExpiryStatus(item.expiryDate);
+                                return (
+                                    <tr key={item.id} className="hover:bg-gray-50">
+                                        <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.name}</td>
+                                        <td className="py-3 px-4 text-sm text-gray-600"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{item.location}</span></td>
+                                        <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
+                                        <td className="py-3 px-4 text-sm text-center text-gray-600 font-mono">
+                                            {item.expiryDate || '-'}
+                                        </td>
+                                        <td className="py-3 px-4 text-sm text-center">
+                                            {expiryStatus ? (
+                                                <span className={`text-[10px] font-bold px-2 py-1 rounded border ${expiryStatus.color}`}>
+                                                    {expiryStatus.label}
+                                                </span>
+                                            ) : <span className="text-gray-400 text-xs">-</span>}
+                                        </td>
+                                        <td className="py-3 px-4 text-center">
+                                            <span className={`font-bold text-lg ${item.quantity <= (item.minThreshold || 3) ? 'text-red-600' : 'text-[#D97A7D]'}`}>{item.quantity}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-right space-x-2">
+                                            <button onClick={() => openModal('in', item)} className="text-green-600 hover:bg-green-50 px-2 py-1 rounded border border-green-200 text-xs font-medium">+ Nhập</button>
+                                            <button onClick={() => openModal('out', item)} className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs font-medium">- Xuất</button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {filteredItems.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="text-center py-8 text-gray-400">
+                                        {items.length === 0 ? "Kho đang trống." : "Không tìm thấy sản phẩm phù hợp."}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )}
+
+        {tab === 'history' && (
+            <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
+                <div className="p-4 bg-[#FDF7F8] border-b border-pink-100 flex flex-wrap items-center gap-3">
+                    <span className="text-sm font-bold text-[#D97A7D] flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        Lọc theo thời gian:
+                    </span>
+                    <select 
+                        value={historyMonth} 
+                        onChange={(e) => setHistoryMonth(e.target.value)}
+                        className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-[#E5989B] bg-white cursor-pointer"
+                    >
+                        <option value="all">Tất cả các tháng</option>
+                        {Array.from({ length: 12 }, (_, i) => (
+                            <option key={i + 1} value={i + 1}>Tháng {i + 1}</option>
+                        ))}
+                    </select>
+                    <select 
+                        value={historyYear} 
+                        onChange={(e) => setHistoryYear(e.target.value)}
+                        className="border border-gray-300 rounded-md text-sm p-1.5 focus:ring-[#E5989B] bg-white cursor-pointer"
+                    >
+                        <option value="all">Tất cả các năm</option>
+                        {availableYears.map(year => (
+                            <option key={year} value={year}>Năm {year}</option>
+                        ))}
+                    </select>
+                    {(historyMonth !== 'all' || historyYear !== 'all') && (
+                        <button onClick={() => { setHistoryMonth('all'); setHistoryYear('all'); }} className="text-xs text-red-500 hover:underline ml-2">Xóa lọc</button>
+                    )}
+                </div>
+
+                <div className="overflow-x-auto max-h-[70vh]">
+                    <table className="min-w-full whitespace-nowrap">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Thời gian</th>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Người thực hiện</th>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Hành động</th>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Sản phẩm</th>
+                                <th className="py-3 px-4 text-right text-xs font-bold text-gray-500 uppercase">Số lượng</th>
+                                <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Ghi chú / Lý do</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {filteredTransactions.length > 0 ? filteredTransactions.map(tx => (
+                                <tr key={tx.id} className="hover:bg-gray-50">
+                                    <td className="py-3 px-4 text-sm text-gray-600">{new Date(tx.date).toLocaleString('vi-VN')}</td>
+                                    <td className="py-3 px-4 text-sm font-medium text-gray-900">{tx.performedBy}</td>
+                                    <td className="py-3 px-4 text-sm">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${tx.type === 'in' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {tx.type === 'in' ? 'NHẬP KHO' : 'XUẤT KHO'}
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-gray-800">{tx.itemName}</td>
+                                    <td className="py-3 px-4 text-right text-sm font-bold text-gray-700">{tx.quantity}</td>
+                                    <td className="py-3 px-4 text-sm text-gray-500 italic">{tx.reason || '-'}</td>
+                                </tr>
+                            )) : (
+                                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Không tìm thấy giao dịch nào trong khoảng thời gian này.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )}
+
+        <ActionModal 
+            isOpen={modalState.isOpen}
+            onClose={() => setModalState({...modalState, isOpen: false})}
+            type={modalState.type}
+            item={modalState.item}
+            onSubmit={handleAction}
+        />
+    </div>
+  );
 };
 
-// INITIAL INVENTORY DATA FROM EXCEL - FULL LIST
-export const INVENTORY_ITEMS: InventoryItem[] = [
-    // KỆ A
-    inv('Giấy vệ sinh nhân viên', 'KỆ A', 'cây', 4),
-    inv('Giấy vệ sinh cho khách', 'KỆ A', 'cây', 21),
-    inv('Viên xả bồn cầu', 'KỆ A', 'cái', 1),
-    inv('Ly giấy', 'KỆ A', 'cây', 3),
-    inv('Nước giặt xả lớn Max Kleen', 'KỆ A', 'bịch', 5),
-    inv('Nước lau kính', 'KỆ A', 'chai', 3),
-    inv('Bột giặt Omo 5KG', 'KỆ A', 'gói', 1),
-    inv('Đèn Leaf - bắt muỗi', 'KỆ A', 'cái', 1),
-    inv('Đèn Nightlight', 'KỆ A', 'cái', 1),
-    inv('Dép nhân viên cao', 'KỆ A', 'đôi', 5),
-    inv('Găng tay cao su loại to', 'KỆ A', 'ĐÔI', 2),
-    inv('Gel lọc sợi vải', 'KỆ A', 'bịch', 2),
-    inv('Ky hốt rác', 'KỆ A', 'cái', 1),
-    inv('Listerin', 'KỆ A', 'chai', 2),
-    inv('Máy sấy Dyson', 'KỆ A', 'cái', 2),
-    inv('Miếng lau nhà', 'KỆ A', 'cái', 17),
-    inv('Nước lau sàn Max Kleen', 'KỆ A', 'bình', 3),
-    inv('Nước lau sàn Max LỚN', 'KỆ A', 'gói', 4),
-    inv('Nước lau sàn Max NHỎ', 'KỆ A', 'gói', 3),
-    inv('Nước rửa tay 1 Aqua Vera', 'KỆ A', 'chai', 1),
-    inv('Vim', 'KỆ A', 'chai', 2),
-    inv('Cuộn lăn bụi', 'KỆ A', 'cái', 4),
-    inv('Khăn giấy rút - Vuông Bless you', 'KỆ A', 'gói', 16),
-    inv('Túi đựng rác', 'KỆ A', 'bịch', 10),
-    inv('Long não 1KG', 'KỆ A', 'túi', 4),
-    inv('Nến teelight', 'KỆ A', 'hộp', 3),
-    
-    // KỆ A (Tiếp) & KỆ B
-    inv('Miếng úp mặt cao su - Trắng', 'KỆ A', 'cái', 4),
-    inv('Miếng úp mặt cao su - Xám', 'KỆ A', 'cái', 2),
-    inv('Miếng úp mặt vải', 'KỆ A', 'cái', 2),
-    inv('Xịt thơm phòng Glade', 'KỆ A', 'chai', 2),
-    inv('Bột cám gạo sữa', 'KỆ B', 'bịch', 5, '2025-08-01'),
-    inv('Hair mask refair', 'KỆ B', 'tuýp lớn', 2, '2025-09-01'),
-    inv('Hair mask refair', 'KỆ B', 'tuýp nhỏ', 3, '2025-11-01'),
-    inv('Kem ủ tóc Fino', 'KỆ B', 'hộp', 1, '2026-06-01'),
-    inv('Dầu gội RNW', 'KỆ B', 'chai', 1, '2026-09-01'),
-    inv('Sữa non Cow\'s Milk', 'KỆ B', 'hộp', 1, '2026-10-01'),
-    inv('Xả ủ tóc Voudioty', 'KỆ B', 'hộp', 4, '2027-03-01'),
-    inv('Dầu Massage BaFy', 'KỆ B', 'chai', 4, '2027-04-01'),
-    inv('DR For Hair', 'KỆ B', 'chai', 3, '2027-05-01'),
-    inv('Dầu xả bưởi Cafuné 480ml', 'KỆ B', 'chai', 3, '2027-08-01'),
-    inv('Dầu xả bưởi Grapefruit', 'KỆ B', 'chai', 5, '2027-09-01'),
-    inv('Dầu Gội Bưởi Grapefruit', 'KỆ B', 'chai', 4, '2027-11-01'),
-    inv('Cam Ngọt Oil', 'KỆ B', 'Can', 1, '2028-01-01'),
-    inv('Sữa rửa mặt Hamotogi', 'KỆ B', 'tuýp', 4, '2029-03-01'),
-    inv('Bộ cây quét mặt nạ (3 cây)', 'KỆ B', 'gói', 1),
-    inv('Bột đậu đỏ yến mạch', 'KỆ B', 'bịch', 6),
-    inv('Cọ quét mặt nạ', 'KỆ B', 'cái', 30),
-    inv('Dầu gội Biotin', 'KỆ B', 'chai', 5),
-    inv('Dầu xả Biotin', 'KỆ B', 'chai', 5),
-    inv('Kem ủ trắng White Pack', 'KỆ B', 'hũ', 1),
-    inv('Mặt nạ mắt 20 miếng / hộp', 'KỆ B', 'hộp', 6),
-    inv('Máy matxa cây màu đỏ', 'KỆ B', 'cái', 1),
-    inv('Mốc dán tường', 'KỆ B', 'vỉ', 8),
-    inv('Muối ngâm chân thải độc', 'KỆ B', 'túi', 5),
-    inv('Muối tắm cà phê', 'KỆ B', 'túi', 11),
-    inv('Muối tắm hoa hồng 1kg', 'KỆ B', 'túi', 3),
-    inv('Mút tẩy trang bọt biển (20 cục / gói)', 'KỆ B', 'bịch', 2),
-    inv('Quế cây', 'KỆ B', 'bịch', 1),
-    inv('Tú nương', 'KỆ B', 'chai', 1),
-    inv('Túi chườm chân - 2 cái / gói', 'KỆ B', 'gói', 5),
-    inv('Viên thả bồn', 'KỆ B', 'viên', 72),
-    inv('Dép nhựa hồng', 'KỆ B', 'đôi', 2),
-    inv('Dép nhựa nâu', 'KỆ B', 'đôi', 2),
-    
-    // KỆ C & LỄ TÂN
-    inv('Gói tắm trắng cà phê cao cấp', 'KỆ C', 'gói', 10),
-    inv('Dầu Massage Body', 'KỆ C', 'chai', 25),
-    inv('Sáng mỡ', 'KỆ C', 'bịch', 21, '2025-05-01'),
-    inv('Tẩy da chết Skin', 'KỆ C', 'tuýp', 2, '2025-08-01'),
-    inv('JohnsonBaby - Phấn lớn', 'KỆ C', 'chai', 3, '2026-02-01'),
-    inv('Tinh dầu ngải cứu', 'KỆ C', 'hộp', 14, '2026-06-01'),
-    inv('Povidine 10%', 'KỆ C', 'chai lớn', 2, '2026-07-01'),
-    inv('Johnsonbaby - Chai chiết phân Mini', 'KỆ C', 'chai', 16, '2026-08-01'),
-    inv('Mặt nạ mắt Skin', 'KỆ C', 'túi', 6, '2026-08-01'),
-    inv('Ý Vi - Chai xịt khoáng', 'KỆ C', 'chai', 1, '2026-12-01'),
-    inv('Gạc phẫu thuật không dệt (50 bịch / túi)', 'KỆ C', 'bịch', 124, '2027-01-01'),
-    inv('Kem chống nắng Ý Vĩ', 'KỆ C', 'tuýp', 2, '2027-03-01'),
-    inv('V.P Start', 'KỆ C', 'chai', 2, '2027-04-01'),
-    inv('Vitamin E', 'KỆ C', 'lọ', 16, '2027-06-01'),
-    inv('Muối truyền 100ml', 'KỆ C', 'chai', 3, '2027-08-01'),
-    inv('Gạc y tế vô trùng', 'KỆ C', 'bịch', 165, '2027-10-01'),
-    inv('Gạc tẩm cồn', 'KỆ C', 'hộp', 10, '2027-11-01'),
-    inv('Bông tẩy trang', 'LỄ TÂN', 'bịch', 3),
-    inv('Ủ Chamomide Repair', 'KỆ C', 'hũ', 7, '2027-12-01'),
-    inv('Găng tay phẫu thuật size M', 'KỆ C', 'hộp', 2),
-    inv('Áo ngực giấy', 'KỆ C', 'cái', 44),
-    inv('Bao tay ngón', 'KỆ C', 'hộp', 1),
-    inv('Bọc hoa sứ giả', 'KỆ C', 'hộp', 1),
-    inv('Bơm tiêm 10 Vinahankook', 'KỆ C', 'cái', 63),
-    inv('Bơm tiêm 5 Vinahankook', 'KỆ C', 'cái', 46),
-    inv('Bông gòn viên', 'KỆ C', 'bịch', 3),
-    inv('Bông lau oval', 'KỆ C', 'bịch', 5),
-    inv('Cây ngải cứu màu xanh lá', 'KỆ C', 'cái', 2),
-    inv('Chén cao su hồng', 'KỆ C', 'cái', 2),
-    inv('Chén inox nhỏ', 'KỆ C', 'cái', 2),
-    inv('Cồn 5 lít', 'KỆ C', 'can', 1),
-    inv('Dao cạo râu + cream', 'KỆ C', 'bộ', 1),
-    inv('Dung dịch rửa dụng cụ y tế', 'KỆ C', 'chai', 2),
-    inv('Găng tay nhân viên HK glove (S)', 'KỆ C', 'hộp', 3),
-    inv('Găng tay phẫu thuật size S', 'KỆ C', 'hộp', 6),
-    inv('Giấy quấn đầu', 'KỆ C', 'chai', 1),
-    inv('(Cow)', 'KỆ C', 'chai', 1),
-    inv('Kẹp càng cua', 'KỆ C', 'bịch', 3),
-    inv('Khăn lau mặt', 'KỆ C', 'cây', 1),
-    inv('Khẩu trang', 'KỆ C', 'hộp', 3),
-    inv('Khẩu trang y tế túi', 'KỆ C', 'túi', 4),
-    inv('Lược Chà cao su tẩy tế bào chết - màu hồng', 'KỆ C', 'cái', 1),
-    inv('Lược chải rối Off Relax', 'KỆ C', 'cái', 1),
-    inv('Lược gỡ chồng rối tóc', 'KỆ C', 'cái', 9),
-    inv('Lược tắm', 'KỆ C', 'cái', 1),
-    inv('Máy nâng cơ Mini', 'KỆ C', 'cái', 2),
-    inv('Miếng lót úp mặt', 'KỆ C', 'bịch', 4),
-    inv('Mút tẩy trang tròn dẹp', 'KỆ C', 'bịch', 4),
-    inv('Que gỗ - Lưỡi', 'KỆ C', 'hộp', 2),
-    inv('Tăm bông đen', 'KỆ C', 'hộp', 11),
-    inv('Tăm bông gỗ', 'KỆ C', 'bịch', 1),
-    inv('Thước đo tay chân', 'KỆ C', 'cái', 6),
-    inv('Trích máu Lancets', 'KỆ C', 'hộp', 4),
-    inv('Túi xông hơi mặt thảo dược', 'KỆ C', 'túi', 83),
-    inv('Vớ xông hơi ( 5 BỘ)', 'KỆ C', 'cặp', 80),
-    inv('Đầu kim 36 (Cây kim cho máy dr pen)', 'KỆ C', 'cây', 28),
-    inv('Bột Mask Cool', 'KỆ B', 'bịch', 1),
-    
-    // KỆ D - NAIL & MI
-    inv('Gel dã máy Eugo', 'KỆ D', 'bịch', 1),
-    inv('Sáp Wax Lông', 'KỆ E', 'bịch', 9, '2027-12-01'),
-    inv('Gạc phẫu thuật - Chưa tiệt trùng', 'KỆ D', 'hộp', 5),
-    inv('Màng co 25cm', 'KỆ D', 'cuộn', 2),
-    inv('Miếng lót khay giấy màu hồng', 'KỆ D', 'bịch', 3),
-    inv('Miếng dán mi (Pad mi)', 'KỆ D', 'bịch', 6),
-    inv('Lưới bọc rác', 'KỆ D', 'bịch', 2),
-    inv('Oil dưỡng móng - hộp màu xanh lá + blue', 'KỆ D', 'cây', 13),
-    inv('Gel Tẩy tế bào chết chân', 'KỆ D', 'chai', 3, '2026-02-01'),
-    inv('Mặt nạ tay dưỡng ẩm RNW', 'KỆ D', 'chai', 1, '2026-09-01'),
-    inv('Mặt nạ ủ tóc RNW', 'KỆ D', 'gói', 12, '2026-03-01'),
-    inv('Kềm vàng', 'KỆ D', 'cây', 10, '2026-06-01'),
-    inv('Gel vệ sinh ghế da', 'KỆ D', 'chai', 5, '2026-07-01'),
-    inv('DrBear Sữa dưỡng ẩm làm trắng body', 'KỆ D', 'chai', 8, '2026-08-01'),
-    inv('Mặt nạ tóc RNW', 'KỆ D', 'Hũ viền', 1, '2026-08-01'),
-    inv('Dầu gội RNW', 'KỆ D', 'chai', 1, '2027-09-01'),
-    inv('Dr Hou Tinh chất trắng da White essen', 'KỆ D', 'Hộp', 1, '2026-09-01'),
-    inv('Soap pink for women L qualyn', 'KỆ D', 'Hộp', 1, '2026-09-01'),
-    inv('Miếng dán lột mụn RNW', 'KỆ D', 'Túi', 5, '2026-10-01'),
-    inv('Tuýp dưỡng môi Bubble Lip Mash', 'KỆ D', 'Tuýp', 3, '2026-10-01'),
-    inv('Eye Film BOH', 'KỆ D', 'Hộp', 1, '2026-11-01'),
-    inv('Bọt rửa mi Caudalive', 'KỆ D', 'Chai', 1, '2027-02-01'),
-    inv('Tub massage chân Vasaline - Tím', 'KỆ D', 'tuýp', 1),
-    inv('Tub massage Tay Vasaline - Hồng', 'KỆ D', 'tuýp', 1),
-    inv('Gel chà gót Callus', 'KỆ D', 'chai', 1),
-    inv('Nước rửa móng - Quyên', 'KỆ D', 'chai', 1),
-    inv('Bông tăm màu hồng', 'KỆ D', 'hộp', 1),
-    inv('Bọt biển chà gót chân lớn', 'KỆ D', 'gói', 1),
-    inv('Bọt biển nhỏ', 'KỆ D', 'gói', 1),
-    inv('Buffer - Nail', 'KỆ D', 'cái', 1),
-    inv('Cát băng keo mi', 'KỆ D', 'Cái', 1),
-    inv('Cây Mi đen', 'KỆ D', 'hộp', 1),
-    inv('Cây Mi trắng', 'KỆ D', 'hộp', 1),
-    inv('Chai nước mềm da Blue Cross', 'KỆ D', 'chai', 1),
-    inv('Cồn lau gel', 'KỆ D', 'chai', 3),
-    inv('Dầu xả RNW', 'KỆ D', 'chai', 1),
-    inv('Đèn mặt trăng', 'KỆ D', 'cái', 1),
-    inv('Giấy chùi Nail - màu hồng', 'KỆ D', 'bịch', 5),
-    inv('Giấy chùi Nail - màu trắng', 'KỆ D', 'bịch', 5),
-    inv('Giấy ủ định hình mi (Black Wings)', 'KỆ D', 'gói', 1),
-    inv('Gương mi mini vàng', 'KỆ D', 'cái', 1),
-    inv('Hộp đựng nail box', 'KỆ D', 'hộp', 10),
-    inv('Kem dưỡng gót Balea', 'KỆ D', 'chai', 2),
-    inv('Kem tay dưỡng ẩm Vasaline', 'KỆ D', 'Tuýp', 1),
-    inv('Keo dán móng Waloc', 'KỆ D', 'vỉ', 2),
-    inv('Lược chải cao su', 'KỆ D', 'cái', 2),
-    inv('Lược dây', 'KỆ D', 'cái', 4),
-    inv('Bao tay nail hồng cắt ngón', 'KỆ D', 'Cặp', 7),
-    inv('Ly thủy tinh đỏ', 'KỆ D', 'cái', 5),
-    inv('Màn ủ môi', 'KỆ D', 'hộp', 7),
-    inv('Mặt nạ chân', 'KỆ D', 'Túi', 19),
-    inv('Máy hơ mi R1', 'KỆ D', 'cái', 2),
-    inv('Máy hút bụi bàn Nail', 'KỆ D', 'cái', 1),
-    inv('Máy lắc keo mi - Đen', 'KỆ D', 'cái', 1),
-    inv('Máy lắc keo mi - Trắng', 'KỆ D', 'cái', 1),
-    inv('Miếng lót bàn Nail', 'KỆ D', 'cái', 2),
-    inv('Miếng nam châm Beutiful Lashes', 'KỆ D', 'Hộp', 4),
-    inv('Miếng nhám chà gót chân', 'KỆ D', 'cái', 1),
-    inv('Móng giả', 'KỆ D', 'hộp', 16),
-    inv('Muối Dove', 'KỆ D', 'hũ', 1),
-    inv('Muỗng múc mặt nạ', 'KỆ D', 'Cái', 5),
-    inv('Nước rửa nhíp', 'KỆ D', 'Hũ', 4),
-    inv('Ống hút cỏ', 'KỆ D', 'bịch', 1),
-    inv('Quạt mi - màu hồng', 'KỆ D', 'cái', 1),
-    inv('Que mi màu tím', 'KỆ D', 'Bịch', 1),
-    inv('Thuốc mi dư không dùng', 'KỆ D', 'hộp', 1),
-    inv('Thuốc uốn mi Black wings số 1 và số 2', 'KỆ D', 'bộ', 8),
-    inv('Trục mi', 'KỆ D', 'bịch', 2),
-    inv('Túi mặt nạ tay', 'KỆ D', 'túi', 32),
-    inv('Túi tiệt trùng - nhỏ', 'KỆ D', 'Hộp', 10),
-    inv('Túi tiệt trùng lớn', 'KỆ D', 'Hộp', 1),
-    inv('Túi tiệt trùng vừa', 'KỆ D', 'Hộp', 2),
-    inv('Chổi chải mi', 'KỆ D', 'cây', 150),
-    inv('Bột ngâm chân thảo dược cam - nhiều gói mini', 'KỆ D', 'bịch', 1),
-    inv('Sticker Noel (trong túi màu đỏ)', 'KỆ D', 'túi', 1),
-    inv('Khăn trải bằng nhựa', 'KỆ D', 'cái', 1),
-    inv('Larine', 'KỆ D', 'hộp', 1),
-    inv('Cọ phủ nail', 'KỆ D', 'cái', 3),
-    
-    // KỆ E, TỦ LẠNH, BAP
-    inv('Hộp Rejuran I', 'KỆ E', 'hộp', 1, '2026-07-01'),
-    inv('Hộp Rejuran with PN', 'KỆ E', 'hộp', 2, '2026-08-01'),
-    inv('Hộp Jalupro Professional', 'KỆ E', 'hộp', 1, '2026-01-01'),
-    inv('Elasty Filler', 'KỆ E', 'hộp', 1, '2026-07-01'),
-    inv('Hộp Jalupro Young Eye', 'KỆ E', 'hộp', 9, '2026-04-01'),
-    inv('Karisma', 'KỆ E', 'hộp', 4, '2027-04-01'),
-    inv('Fusion F-HA', 'KỆ E', 'lọ', 4, '2028-07-01'),
-    inv('Aileene Vol #3', 'KỆ E', 'hộp', 1),
-    inv('Áo Choàng Kem', 'KỆ E', 'cái', 9),
-    inv('Áo Choàng Nâu đậm', 'KỆ E', 'cái', 8),
-    inv('Áo Choàng ren', 'KỆ E', 'cái', 7),
-    inv('Áo quây xám', 'KỆ E', 'cái', 2),
-    inv('Bàn ủi hơi nước', 'KỆ E', 'cái', 1),
-    inv('Bình gas Thermage', 'KỆ E', 'bình', 2),
-    inv('Botox 100', 'KỆ E', 'hộp', 4),
-    inv('Cây treo quần áo', 'KỆ E', 'cây', 1),
-    inv('Chai chiết dầu Matxa đen', 'KỆ E', 'chai', 20),
-    inv('Chai chiết tinh dầu mini đen (30 lọ/ bịch)', 'KỆ E', 'lọ', 60),
-    inv('Đầu tip mắt Unther 3.0', 'KỆ E', 'hộp', 1),
-    inv('Đầu tip mắt Unther 4.5', 'KỆ E', 'hộp', 1),
-    inv('Đầu tip mắt 900 FLX', 'KỆ E', 'hộp', 1),
-    inv('Đầu tip mặt 900 FLX', 'KỆ E', 'hộp', 1),
-    inv('Đầu tuýp LinearZ', 'KỆ E', 'hộp', 2),
-    inv('Đồ chơi gỗ + ly thủy tinh', 'KỆ E', 'bộ', 5),
-    inv('Đồ xông tinh dầu - Sứ trắng', 'KỆ E', 'bộ', 4),
-    inv('Gas Clarity +2 chai hết', 'KỆ E', 'chai', 9),
-    inv('Gối Hồng nhỏ', 'KỆ E', 'cái', 1),
-    inv('Gối Hồng vừa', 'KỆ E', 'cái', 1),
-    inv('Gối Mì Xám', 'KỆ E', 'cái', 2),
-    inv('Gối Sofa xám dài', 'KỆ E', 'cái', 5),
-    inv('Hộp Restylance Kysse', 'KỆ E', 'hộp', 1),
-    inv('Hộp Teosyal 2', 'KỆ E', 'hộp', 2.5),
-    inv('Kéo sắt', 'KỆ E', 'cái', 2),
-    inv('Khăn Foot - Xám', 'KỆ E', 'cái', 15),
-    inv('Khăn hồng tắm trắng', 'KỆ E', 'cái', 8),
-    inv('Khăn Nail - Xám', 'KỆ E', 'cái', 26),
-    inv('Khăn trắng - Trung Ju Medical', 'KỆ E', 'cái', 58),
-    inv('Khăn trắng - Trung trơn', 'KỆ E', 'cái', 20),
-    inv('Khăn trắng lớn Ju Medical', 'KỆ E', 'cái', 32),
-    inv('Khăn trắng nhỏ trơn', 'KỆ E', 'cái', 462),
-    inv('Khay ly gỗ', 'KỆ E', 'cái', 3),
-    inv('Lược nhựa cho khách', 'KỆ E', 'cái', 100),
-    inv('Mi Air', 'KỆ E', 'hộp', 25),
-    inv('Mi Barbi', 'KỆ E', 'hộp', 20),
-    inv('Mi Classic', 'KỆ E', 'hộp', 16),
-    inv('Mi Crazy Mix', 'KỆ E', 'bịch', 9),
-    inv('Mi Eyelashes', 'KỆ E', 'hộp', 13),
-    inv('Mi Focus màu tím', 'KỆ E', 'hộp', 20),
-    inv('Mi Focus màu xanh', 'KỆ E', 'hộp', 10),
-    inv('Mi Padora', 'KỆ E', 'hộp', 17),
-    inv('Miếng dán mi mắt dưới', 'KỆ E', 'bịch', 7),
-    inv('Nồi cơm điện hồng', 'KỆ E', 'cái', 1),
-    inv('Nồi xông - hư', 'KỆ E', 'cái', 1),
-    inv('Quần lót sài 1 lần size L', 'KỆ E', 'thùng', 1),
-    inv('Quần lót sài 1 lần size M', 'KỆ E', 'thùng', 1),
-    inv('Quần lót sài 1 lần size S', 'KỆ E', 'thùng', 1),
-    inv('Quạt trang trí', 'KỆ E', 'cái', 2),
-    inv('Tây cầm của màu hồng', 'KỆ E', 'cái', 1),
-    inv('Thảm thấm nước bằng đá', 'KỆ E', 'cái', 2),
-    inv('Thùng Phụ kiện máy xông', 'KỆ E', 'thùng', 1),
-    inv('Túi cói', 'KỆ E', 'cái', 1),
-    inv('Túi hộp phụ kiện Nail', 'KỆ E', 'thùng', 1),
-    inv('Túi Tote nhỏ', 'KỆ E', 'cái', 50),
-    inv('Botox 200', 'KỆ E', 'hộp', 1),
-    inv('Teosyal 1', 'KỆ E', 'hộp', 1),
-    inv('Tiêm tiểu đường nắp cam Omnican', 'KỆ E', 'cái', 100),
-    inv('Hộp Jalupro Super Hydro', 'KỆ E', 'hộp', 3),
-    inv('Cam sấy khô', 'LỄ TÂN', 'bịch', 5),
-    inv('Bột cám sữa cà phê dừa 100 g/ bịch', 'LỄ TÂN', 'bịch', 15),
-    inv('Dầu matxa Le Fin Du Fin', 'LỄ TÂN', 'chai', 4),
-    inv('Thermage Coupling Fluid 60ml', 'LỄ TÂN', 'chai', 3),
-    inv('Thermage return Pad', 'LỄ TÂN', 'hộp', 1),
-    inv('2 hộp dưỡng bền mi - Super Bonder', 'LỄ TÂN', 'hộp', 2),
-    inv('Miếng dán nhũ của khách', 'LỄ TÂN', 'hộp', 2),
-    inv('Mặt nạ Bano Bagi (10 miếng / hộp)', 'LỄ TÂN', 'hộp', 8),
-    inv('Dầu gội bưởi Cafune 480ml', 'LỄ TÂN', 'chai', 17),
-    inv('5b tăm bông (50c/b)', 'LỄ TÂN', 'Bộ', 1),
-    inv('Tay cầm Thermage FLX Handpiece', 'LỄ TÂN', 'hộp', 1),
-    inv('Hộp sơn gel 6in1 Born Pretty', 'LỄ TÂN', 'hộp', 1),
-    inv('Hộp sáp uốn mi Glue Balm', 'LỄ TÂN', 'hộp', 1),
-    inv('Máy Wax Pro', 'LỄ TÂN', 'máy', 1),
-    inv('Set sơn nai (10 hộp)', 'LỄ TÂN', 'thùng', 1),
-    inv('Khăn, đồ nail, 20 hộp đựng và đồ wax', 'LỄ TÂN', 'thùng', 1),
-    inv('5 hộp DHB Và 7 hộp Hydrinity và 1 hộp Image', 'C. Yến', 'hộp', 13),
-    inv('Hộp Hydra B5 Serum', 'C. Yến', 'hộp', 1),
-    inv('Vợt muỗi màu đen', 'KHO', 'cái', 1),
-    // BAP/BOTOX RIÊNG
-    inv('Jalupro', 'BAP', 'hộp', 1),
-    inv('Profhilo', 'BAP', 'hộp', 1),
-    inv('Karisma', 'BAP', 'hộp', 1),
-    inv('Vết chân chim (đuôi mắt 2 bên)', 'BOTOX', 'lọ', 1),
-    inv('Trán', 'BOTOX', 'lọ', 1),
-    inv('Cau mày', 'BOTOX', 'lọ', 1),
-];
+export default InventoryManagement;
