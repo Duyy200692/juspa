@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-// FIX: Import directly from firebase SDK for real connection
+// FIX: Sử dụng Modular SDK chuẩn
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query, addDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
@@ -31,10 +31,12 @@ const App: React.FC = () => {
   // --- Firebase Real-time Listener ---
   useEffect(() => {
     const seedInitialData = async () => {
+        console.log("Checking for initial data...");
         try {
             // Check users
             const usersSnap = await getDocs(collection(db, 'users'));
             if (usersSnap.empty) {
+                console.log("No users found. Seeding default users...");
                 const batch = writeBatch(db);
                 DEFAULT_USERS.forEach(user => {
                     const docRef = doc(db, 'users', user.id);
@@ -45,6 +47,7 @@ const App: React.FC = () => {
             // Check services
             const servicesSnap = await getDocs(collection(db, 'services'));
             if (servicesSnap.empty) {
+                console.log("No services found. Seeding default services...");
                 const batch = writeBatch(db);
                 DEFAULT_SERVICES.forEach(service => {
                     const docRef = doc(db, 'services', service.id);
@@ -55,20 +58,11 @@ const App: React.FC = () => {
              // Check promotions
             const promotionsSnap = await getDocs(collection(db, 'promotions'));
             if (promotionsSnap.empty) {
+                console.log("No promotions found. Seeding default promotions...");
                 const batch = writeBatch(db);
                 DEFAULT_PROMOTIONS.forEach(promo => {
                     const docRef = doc(db, 'promotions', promo.id);
                     batch.set(docRef, promo);
-                });
-                await batch.commit();
-            }
-            // Check Inventory
-            const inventorySnap = await getDocs(collection(db, 'inventory'));
-            if (inventorySnap.empty) {
-                const batch = writeBatch(db);
-                DEFAULT_INVENTORY.forEach(item => {
-                    const docRef = doc(db, 'inventory', item.id);
-                    batch.set(docRef, item);
                 });
                 await batch.commit();
             }
@@ -124,7 +118,7 @@ const App: React.FC = () => {
 
   }, []);
 
-  // ... (Computed Values & Auth - Unchanged) ...
+  // --- Computed Values ---
   const activePromotions = useMemo(() => {
     const now = new Date();
     return promotions.filter(p => 
@@ -141,6 +135,7 @@ const App: React.FC = () => {
     );
   }, [promotions]);
 
+  // --- Auth Handlers ---
   const handleLogin = (username: string, password: string) => {
       const user = users.find(u => u.username === username && u.password === password);
       if (user) {
@@ -180,7 +175,7 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Actions ---
+  // --- Actions: Users (Firebase) ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newId = `user-${Date.now()}`;
     const userRef = doc(db, 'users', newId);
@@ -191,6 +186,7 @@ const App: React.FC = () => {
       await deleteDoc(doc(db, 'users', userId));
   };
 
+  // --- Actions: Promotions (Firebase) ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
     const newId = `promo-${Date.now()}`;
     const promoRef = doc(db, 'promotions', newId);
@@ -206,6 +202,7 @@ const App: React.FC = () => {
     await deleteDoc(doc(db, 'promotions', promotionId));
   };
 
+  // --- Actions: Services (Firebase) ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
     const newId = `service-${Date.now()}`;
     const serviceRef = doc(db, 'services', newId);
@@ -222,7 +219,6 @@ const App: React.FC = () => {
   }
 
   // --- Inventory Actions ---
-  // UPDATED: Added expiryDate parameter
   const importInventoryItem = async (itemId: string, quantity: number, notes?: string, expiryDate?: string) => {
       if (!loggedInUser) return;
       const item = inventoryItems.find(i => i.id === itemId);
@@ -276,20 +272,21 @@ const App: React.FC = () => {
 
   const handleForceSeedInventory = async () => {
       try {
+          console.log("Starting force seed with", DEFAULT_INVENTORY.length, "items.");
           const batch = writeBatch(db);
           DEFAULT_INVENTORY.forEach(item => {
               const docRef = doc(db, 'inventory', item.id);
               batch.set(docRef, item);
           });
           await batch.commit();
-          alert("Đã nạp dữ liệu kho mẫu thành công! (Vui lòng đợi vài giây để cập nhật)");
+          alert(`Đã nạp thành công ${DEFAULT_INVENTORY.length} mặt hàng vào kho!`);
       } catch (e) {
           console.error(e);
           alert("Lỗi khi nạp dữ liệu: " + e);
       }
   };
 
-  // ... (Render Logic) ...
+  // --- Main Render Flow ---
   if (isLoading) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">
