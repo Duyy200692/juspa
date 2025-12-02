@@ -7,7 +7,7 @@ interface InventoryManagementProps {
   items: InventoryItem[];
   transactions: InventoryTransaction[];
   currentUser: User;
-  onImportItem: (itemId: string, quantity: number, notes?: string) => Promise<void>;
+  onImportItem: (itemId: string, quantity: number, notes?: string, expiryDate?: string) => Promise<void>;
   onExportItem: (itemId: string, quantity: number, reason: string) => Promise<void>;
   onSeedData: () => Promise<void>;
 }
@@ -17,22 +17,29 @@ interface ActionModalProps {
     onClose: () => void;
     type: 'in' | 'out';
     item: InventoryItem | null;
-    onSubmit: (qty: number, note: string) => void;
+    onSubmit: (qty: number, note: string, expiry?: string) => void;
 }
 
 const ActionModal: React.FC<ActionModalProps> = ({ isOpen, onClose, type, item, onSubmit }) => {
     const [qty, setQty] = useState(1);
     const [note, setNote] = useState('');
+    const [newExpiry, setNewExpiry] = useState('');
+
+    // Reset date whenever modal opens
+    React.useEffect(() => {
+        if (isOpen) setNewExpiry('');
+    }, [isOpen]);
 
     if (!isOpen || !item) return null;
 
     const handleSubmit = () => {
         if (qty <= 0) return alert("Số lượng phải lớn hơn 0");
         if (type === 'out' && qty > item.quantity) return alert("Số lượng xuất vượt quá tồn kho!");
-        onSubmit(qty, note);
+        onSubmit(qty, note, newExpiry);
         onClose();
         setQty(1);
         setNote('');
+        setNewExpiry('');
     };
 
     return (
@@ -42,7 +49,23 @@ const ActionModal: React.FC<ActionModalProps> = ({ isOpen, onClose, type, item, 
                     <p>Đơn vị tính: <span className="font-bold">{item.unit}</span></p>
                     <p>Hiện tồn: <span className="font-bold text-[#D97A7D]">{item.quantity}</span></p>
                     <p>Vị trí: <span className="font-medium">{item.location}</span></p>
+                    {item.expiryDate && <p>Hạn dùng hiện tại: <span className="text-blue-600 font-mono">{item.expiryDate}</span></p>}
                 </div>
+                
+                {/* NEW: Expiry Date Input for Import */}
+                {type === 'in' && (
+                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                        <label className="block text-xs font-bold text-blue-800 mb-1">Cập nhật Hạn dùng mới (Tùy chọn)</label>
+                        <input 
+                            type="date" 
+                            value={newExpiry} 
+                            onChange={e => setNewExpiry(e.target.value)} 
+                            className="w-full border border-blue-300 rounded p-2 text-sm focus:ring-blue-500 bg-white"
+                        />
+                        <p className="text-[10px] text-blue-500 mt-1 italic">Chọn ngày nếu lô hàng mới có hạn sử dụng khác.</p>
+                    </div>
+                )}
+
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Số lượng {type === 'in' ? 'Nhập' : 'Xuất'}</label>
                     <input type="number" min="1" value={qty} onChange={e => setQty(Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#E5989B]" />
@@ -65,14 +88,15 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLocation, setFilterLocation] = useState('all');
   
-  // History Filters State
+  // History Filters
   const [historyMonth, setHistoryMonth] = useState<string>('all');
   const [historyYear, setHistoryYear] = useState<string>('all');
 
   const [modalState, setModalState] = useState<{isOpen: boolean, type: 'in'|'out', item: InventoryItem | null}>({isOpen: false, type: 'in', item: null});
   const [isSeeding, setIsSeeding] = useState(false);
 
-  const locations = useMemo(() => Array.from(new Set(items.map(i => i.location))).sort(), [items]);
+  // FIX: Sort locations alphabetically (A -> Z)
+  const locations = useMemo(() => Array.from(new Set(items.map(i => i.location))).sort((a, b) => a.localeCompare(b)), [items]);
 
   const filteredItems = useMemo(() => {
       return items.filter(item => {
@@ -82,14 +106,12 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
       });
   }, [items, searchTerm, filterLocation]);
 
-  // Available Years for History Filter
   const availableYears = useMemo(() => {
       const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
       years.add(new Date().getFullYear());
       return Array.from(years).sort((a, b) => b - a);
   }, [transactions]);
 
-  // Filter Transactions Logic
   const filteredTransactions = useMemo(() => {
       return transactions.filter(t => {
           const date = new Date(t.date);
@@ -102,23 +124,25 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
   const getExpiryStatus = (dateString?: string) => {
       if (!dateString) return null;
       const today = new Date();
+      today.setHours(0,0,0,0);
       const expiry = new Date(dateString);
       const diffTime = expiry.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (diffDays <= 30) return { label: `Sắp hết hạn (${diffDays} ngày)`, color: 'bg-red-100 text-red-700 border-red-200' };
-      if (diffDays <= 60) return { label: `Cảnh báo (${diffDays} ngày)`, color: 'bg-yellow-100 text-yellow-700 border-yellow-200' };
-      return null;
+      if (diffDays < 0) return { label: `Đã hết hạn (${Math.abs(diffDays)} ngày)`, color: 'bg-gray-800 text-white border-gray-600' };
+      if (diffDays <= 30) return { label: `Nguy hiểm (${diffDays} ngày)`, color: 'bg-red-100 text-red-700 border-red-200 animate-pulse' };
+      if (diffDays <= 60) return { label: `Cảnh báo (${diffDays} ngày)`, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+      return { label: `An toàn (${diffDays} ngày)`, color: 'bg-green-50 text-green-600 border-green-100' };
   };
 
   const openModal = (type: 'in' | 'out', item: InventoryItem) => {
       setModalState({ isOpen: true, type, item });
   };
 
-  const handleAction = async (qty: number, note: string) => {
+  const handleAction = async (qty: number, note: string, expiry?: string) => {
       if (!modalState.item) return;
       if (modalState.type === 'in') {
-          await onImportItem(modalState.item.id, qty, note);
+          await onImportItem(modalState.item.id, qty, note, expiry);
       } else {
           await onExportItem(modalState.item.id, qty, note);
       }
@@ -180,7 +204,10 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
                                 <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Tên sản phẩm</th>
                                 <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Vị trí</th>
                                 <th className="py-3 px-4 text-left text-xs font-bold text-gray-500 uppercase">Đơn vị</th>
+                                {/* NEW: Separate Expiry Date Column */}
                                 <th className="py-3 px-4 text-center text-xs font-bold text-gray-500 uppercase">Hạn dùng</th>
+                                {/* NEW: Separate Status Column */}
+                                <th className="py-3 px-4 text-center text-xs font-bold text-gray-500 uppercase">Trạng thái Date</th>
                                 <th className="py-3 px-4 text-center text-xs font-bold text-gray-500 uppercase">Tồn kho</th>
                                 <th className="py-3 px-4 text-right text-xs font-bold text-gray-500 uppercase">Thao tác</th>
                             </tr>
@@ -193,13 +220,15 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
                                         <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.name}</td>
                                         <td className="py-3 px-4 text-sm text-gray-600"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{item.location}</span></td>
                                         <td className="py-3 px-4 text-sm text-gray-600">{item.unit}</td>
+                                        <td className="py-3 px-4 text-sm text-center text-gray-600 font-mono">
+                                            {item.expiryDate || '-'}
+                                        </td>
                                         <td className="py-3 px-4 text-sm text-center">
-                                            {item.expiryDate ? (
-                                                <div className="flex flex-col items-center">
-                                                    <span>{item.expiryDate}</span>
-                                                    {expiryStatus && <span className={`text-[10px] px-1 rounded border ${expiryStatus.color}`}>{expiryStatus.label}</span>}
-                                                </div>
-                                            ) : '-'}
+                                            {expiryStatus ? (
+                                                <span className={`text-[10px] font-bold px-2 py-1 rounded border ${expiryStatus.color}`}>
+                                                    {expiryStatus.label}
+                                                </span>
+                                            ) : <span className="text-gray-400 text-xs">-</span>}
                                         </td>
                                         <td className="py-3 px-4 text-center">
                                             <span className={`font-bold text-lg ${item.quantity <= (item.minThreshold || 3) ? 'text-red-600' : 'text-[#D97A7D]'}`}>{item.quantity}</span>
@@ -213,7 +242,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
                             })}
                             {filteredItems.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-8 text-gray-400">
+                                    <td colSpan={7} className="text-center py-8 text-gray-400">
                                         {items.length === 0 ? "Kho đang trống." : "Không tìm thấy sản phẩm phù hợp."}
                                     </td>
                                 </tr>
@@ -226,7 +255,6 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({ items, transa
 
         {tab === 'history' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
-                {/* NEW: Time Filters Bar */}
                 <div className="p-4 bg-[#FDF7F8] border-b border-pink-100 flex flex-wrap items-center gap-3">
                     <span className="text-sm font-bold text-[#D97A7D] flex items-center gap-1">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
