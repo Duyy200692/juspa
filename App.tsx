@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-// FIX: Sử dụng Modular SDK chuẩn
+// FIX: Import directly from firebase SDK for real connection
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query, addDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
@@ -10,7 +10,7 @@ import LoginScreen from './components/LoginScreen';
 import UserManagement from './components/UserManagement';
 import LandingPage from './components/LandingPage';
 import InventoryManagement from './components/InventoryManagement';
-import { User, Promotion, Service, Role, InventoryItem, InventoryTransaction } from './types';
+import { User, Promotion, Service, Role, InventoryItem, InventoryTransaction, AuditSession, AuditItem } from './types';
 import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS, INVENTORY_ITEMS as DEFAULT_INVENTORY } from './constants';
 
 type View = 'dashboard' | 'services' | 'users' | 'inventory';
@@ -22,6 +22,8 @@ const App: React.FC = () => {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]);
+  // NEW: Audit State
+  const [auditSessions, setAuditSessions] = useState<AuditSession[]>([]);
   
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [view, setView] = useState<View>('dashboard');
@@ -36,7 +38,6 @@ const App: React.FC = () => {
             // Check users
             const usersSnap = await getDocs(collection(db, 'users'));
             if (usersSnap.empty) {
-                console.log("No users found. Seeding default users...");
                 const batch = writeBatch(db);
                 DEFAULT_USERS.forEach(user => {
                     const docRef = doc(db, 'users', user.id);
@@ -47,7 +48,6 @@ const App: React.FC = () => {
             // Check services
             const servicesSnap = await getDocs(collection(db, 'services'));
             if (servicesSnap.empty) {
-                console.log("No services found. Seeding default services...");
                 const batch = writeBatch(db);
                 DEFAULT_SERVICES.forEach(service => {
                     const docRef = doc(db, 'services', service.id);
@@ -58,7 +58,6 @@ const App: React.FC = () => {
              // Check promotions
             const promotionsSnap = await getDocs(collection(db, 'promotions'));
             if (promotionsSnap.empty) {
-                console.log("No promotions found. Seeding default promotions...");
                 const batch = writeBatch(db);
                 DEFAULT_PROMOTIONS.forEach(promo => {
                     const docRef = doc(db, 'promotions', promo.id);
@@ -96,6 +95,12 @@ const App: React.FC = () => {
             const loadedTrans = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryTransaction));
             setInventoryTransactions(loadedTrans);
         });
+
+        // NEW: Audit Listener
+        const unsubAudits = onSnapshot(query(collection(db, "audit_sessions")), (snapshot) => {
+            const loadedAudits = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AuditSession));
+            setAuditSessions(loadedAudits);
+        });
         
         return () => {
             unsubUsers();
@@ -103,6 +108,7 @@ const App: React.FC = () => {
             unsubPromotions();
             unsubInventory();
             unsubTransactions();
+            unsubAudits();
         };
     };
 
@@ -118,7 +124,7 @@ const App: React.FC = () => {
 
   }, []);
 
-  // --- Computed Values ---
+  // ... (Keep existing computed values and auth handlers) ...
   const activePromotions = useMemo(() => {
     const now = new Date();
     return promotions.filter(p => 
@@ -135,7 +141,6 @@ const App: React.FC = () => {
     );
   }, [promotions]);
 
-  // --- Auth Handlers ---
   const handleLogin = (username: string, password: string) => {
       const user = users.find(u => u.username === username && u.password === password);
       if (user) {
@@ -175,7 +180,7 @@ const App: React.FC = () => {
     }
   };
 
-  // --- Actions: Users (Firebase) ---
+  // --- Actions ---
   const addUser = async (newUserData: Omit<User, 'id'>) => {
     const newId = `user-${Date.now()}`;
     const userRef = doc(db, 'users', newId);
@@ -186,7 +191,6 @@ const App: React.FC = () => {
       await deleteDoc(doc(db, 'users', userId));
   };
 
-  // --- Actions: Promotions (Firebase) ---
   const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
     const newId = `promo-${Date.now()}`;
     const promoRef = doc(db, 'promotions', newId);
@@ -202,7 +206,6 @@ const App: React.FC = () => {
     await deleteDoc(doc(db, 'promotions', promotionId));
   };
 
-  // --- Actions: Services (Firebase) ---
   const addService = async (newServiceData: Omit<Service, 'id'>) => {
     const newId = `service-${Date.now()}`;
     const serviceRef = doc(db, 'services', newId);
@@ -228,8 +231,26 @@ const App: React.FC = () => {
       const itemRef = doc(db, 'inventory', itemId);
       
       const updateData: any = { quantity: newQty };
+      
+      // Batch Logic
+      let updatedBatches = item.batches ? [...item.batches] : [];
+      if (item.expiryDate && updatedBatches.length === 0) {
+          updatedBatches.push({ expiryDate: item.expiryDate, quantity: item.quantity });
+      }
+
       if (expiryDate) {
-          updateData.expiryDate = expiryDate;
+          const existingBatchIndex = updatedBatches.findIndex(b => b.expiryDate === expiryDate);
+          if (existingBatchIndex >= 0) {
+              updatedBatches[existingBatchIndex].quantity += quantity;
+          } else {
+              updatedBatches.push({ expiryDate, quantity });
+          }
+          updatedBatches.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+          
+          updateData.batches = updatedBatches;
+          if (updatedBatches.length > 0) {
+              updateData.expiryDate = updatedBatches[0].expiryDate;
+          }
       }
       
       await updateDoc(itemRef, updateData);
@@ -255,7 +276,35 @@ const App: React.FC = () => {
       const newQty = Math.max(0, item.quantity - quantity);
       const itemRef = doc(db, 'inventory', itemId);
       
-      await updateDoc(itemRef, { quantity: newQty } as { [key: string]: any });
+      const updateData: any = { quantity: newQty };
+
+      // FIFO Logic
+      if (item.batches && item.batches.length > 0) {
+          let remainingToDeduct = quantity;
+          const updatedBatches = item.batches.map(b => ({...b}));
+          updatedBatches.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+
+          for (let i = 0; i < updatedBatches.length; i++) {
+              if (remainingToDeduct <= 0) break;
+              if (updatedBatches[i].quantity >= remainingToDeduct) {
+                  updatedBatches[i].quantity -= remainingToDeduct;
+                  remainingToDeduct = 0;
+              } else {
+                  remainingToDeduct -= updatedBatches[i].quantity;
+                  updatedBatches[i].quantity = 0;
+              }
+          }
+          const finalBatches = updatedBatches.filter(b => b.quantity > 0);
+          updateData.batches = finalBatches;
+          
+          if (finalBatches.length > 0) {
+              updateData.expiryDate = finalBatches[0].expiryDate;
+          } else {
+              updateData.expiryDate = null;
+          }
+      }
+
+      await updateDoc(itemRef, updateData);
 
       await addDoc(collection(db, 'inventory_transactions'), {
           itemId,
@@ -270,12 +319,19 @@ const App: React.FC = () => {
       });
   };
 
+  const updateInventoryItem = async (item: InventoryItem) => {
+      const itemRef = doc(db, 'inventory', item.id);
+      await updateDoc(itemRef, { ...item } as { [key: string]: any });
+  };
+
   const handleForceSeedInventory = async () => {
       try {
-          console.log("Starting force seed with", DEFAULT_INVENTORY.length, "items.");
           const batch = writeBatch(db);
           DEFAULT_INVENTORY.forEach(item => {
               const docRef = doc(db, 'inventory', item.id);
+              if (item.expiryDate) {
+                  item.batches = [{ expiryDate: item.expiryDate, quantity: item.quantity }];
+              }
               batch.set(docRef, item);
           });
           await batch.commit();
@@ -286,7 +342,88 @@ const App: React.FC = () => {
       }
   };
 
-  // --- Main Render Flow ---
+  // --- NEW: AUDIT ACTIONS ---
+  
+  const createAuditSession = async (month: number, year: number) => {
+      if (!loggedInUser) return;
+      const newId = `audit-${year}-${month}-${Date.now()}`;
+      
+      // Snapshot current stock
+      const items: AuditItem[] = inventoryItems.map(inv => ({
+          itemId: inv.id,
+          itemName: inv.name,
+          systemQty: inv.quantity,
+          actualQty: inv.quantity, // Default to system qty
+          diff: 0
+      }));
+
+      const newAudit: AuditSession = {
+          id: newId,
+          name: `Kiểm kê Tháng ${month}/${year}`,
+          month,
+          year,
+          status: 'open',
+          createdBy: loggedInUser.name,
+          createdDate: new Date().toISOString(),
+          items
+      };
+
+      await setDoc(doc(db, 'audit_sessions', newId), newAudit);
+  };
+
+  const updateAuditItem = async (auditId: string, itemId: string, actualQty: number, reason: string) => {
+      const session = auditSessions.find(s => s.id === auditId);
+      if (!session) return;
+
+      const updatedItems = session.items.map(item => {
+          if (item.itemId === itemId) {
+              return { ...item, actualQty, diff: actualQty - item.systemQty, reason };
+          }
+          return item;
+      });
+
+      await updateDoc(doc(db, 'audit_sessions', auditId), { items: updatedItems } as any);
+  };
+
+  const finalizeAuditSession = async (auditId: string) => {
+      const session = auditSessions.find(s => s.id === auditId);
+      if (!session) return;
+
+      const batch = writeBatch(db);
+      const today = new Date().toISOString();
+
+      // 1. Close session
+      const auditRef = doc(db, 'audit_sessions', auditId);
+      batch.update(auditRef, { status: 'closed', closedDate: today });
+
+      // 2. Adjust Inventory & Create Transactions
+      for (const item of session.items) {
+          if (item.diff !== 0) {
+              // Update Inventory
+              const invRef = doc(db, 'inventory', item.itemId);
+              batch.update(invRef, { quantity: item.actualQty });
+
+              // Create Transaction Record (Adjustment)
+              const transRef = doc(collection(db, 'inventory_transactions')); // Auto ID
+              batch.set(transRef, {
+                  itemId: item.itemId,
+                  itemName: item.itemName,
+                  type: 'audit_adjustment', // Special type
+                  quantity: Math.abs(item.diff),
+                  date: today,
+                  performedBy: loggedInUser?.name || 'System',
+                  performedById: loggedInUser?.id || 'system',
+                  reason: `Điều chỉnh kiểm kê: ${item.diff > 0 ? '+' : ''}${item.diff}. ${item.reason || ''}`,
+                  remainingStock: item.actualQty
+              });
+          }
+      }
+
+      await batch.commit();
+      alert("Đã chốt sổ kiểm kê thành công! Kho đã được cập nhật.");
+  };
+
+  // ... (Render Logic) ...
   if (isLoading) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">
@@ -342,7 +479,13 @@ const App: React.FC = () => {
                 currentUser={loggedInUser}
                 onImportItem={importInventoryItem}
                 onExportItem={exportInventoryItem}
-                onSeedData={handleForceSeedInventory} 
+                onSeedData={handleForceSeedInventory}
+                onUpdateItem={updateInventoryItem}
+                // Pass Audit props
+                auditSessions={auditSessions}
+                onCreateAudit={createAuditSession}
+                onUpdateAuditItem={updateAuditItem}
+                onFinalizeAudit={finalizeAuditSession}
             />
         )}
 

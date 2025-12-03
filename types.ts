@@ -3,7 +3,7 @@ export enum Role {
   Marketing = 'Marketing',
   Management = 'Management',
   Reception = 'Reception',
-  Accountant = 'Accountant', // New Role
+  Accountant = 'Accountant', 
 }
 
 export interface User {
@@ -66,18 +66,24 @@ export interface Promotion {
 
 // --- INVENTORY TYPES ---
 
+export interface InventoryBatch {
+    expiryDate: string; // YYYY-MM-DD
+    quantity: number;
+}
+
 export interface InventoryItem {
   id: string;
   name: string;
-  unit: string; // cái, hộp, chai, ml...
-  quantity: number;
-  location: string; // Kệ A, Kệ B...
-  expiryDate?: string; // YYYY-MM-DD
-  minThreshold?: number; // Cảnh báo sắp hết hàng
+  unit: string; 
+  quantity: number; // Tổng tồn kho
+  location: string; 
+  expiryDate?: string; // Date gần nhất (để sort)
+  minThreshold?: number;
   notes?: string;
+  batches?: InventoryBatch[]; // Danh sách các lô hàng
 }
 
-export type TransactionType = 'in' | 'out';
+export type TransactionType = 'in' | 'out' | 'audit_adjustment'; // Added audit_adjustment
 
 export interface InventoryTransaction {
   id: string;
@@ -85,9 +91,31 @@ export interface InventoryTransaction {
   itemName: string;
   type: TransactionType;
   quantity: number;
-  date: string; // ISO string
-  performedBy: string; // User Name
-  performedById: string; // User ID
-  reason?: string; // e.g., "Khách dùng", "Hư hỏng", "Nhập hàng mới"
+  date: string; 
+  performedBy: string; 
+  performedById: string; 
+  reason?: string; 
   remainingStock: number;
+}
+
+// --- AUDIT TYPES (NEW) ---
+export interface AuditItem {
+    itemId: string;
+    itemName: string;
+    systemQty: number; // Tồn trên phần mềm
+    actualQty: number; // Tồn thực tế đếm được
+    diff: number; // Chênh lệch (Actual - System)
+    reason?: string; // Lý do chênh lệch
+}
+
+export interface AuditSession {
+    id: string;
+    name: string; // VD: Kiểm kê Tháng 12/2025
+    month: number;
+    year: number;
+    status: 'open' | 'closed'; // open: đang kiểm, closed: đã chốt
+    createdBy: string;
+    createdDate: string;
+    closedDate?: string;
+    items: AuditItem[];
 }
