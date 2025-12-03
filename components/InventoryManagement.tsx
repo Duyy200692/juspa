@@ -1,6 +1,26 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { InventoryItem, InventoryTransaction, User, Role, AuditSession, AuditItem } from '../types';
+// FIX: Removed unused 'AuditItem' to fix build error
+import { InventoryItem, InventoryTransaction, User, Role, AuditSession } from '../types';
 import Button from './shared/Button';
+import Modal from './shared/Modal';
+
+interface InventoryManagementProps {
+// ... (rest of the file remains exactly the same)
+  items: InventoryItem[];
+  transactions: InventoryTransaction[];
+  currentUser: User;
+  onImportItem: (itemId: string, quantity: number, notes?: string, expiryDate?: string) => Promise<void>;
+  onExportItem: (itemId: string, quantity: number, reason: string) => Promise<void>;
+  onSeedData: () => Promise<void>;
+  onUpdateItem: (item: InventoryItem) => Promise<void>;
+  
+  // Audit Props
+  auditSessions?: AuditSession[];
+  onCreateAudit?: (month: number, year: number) => Promise<void>;
+  onUpdateAuditItem?: (auditId: string, itemId: string, actualQty: number, reason: string) => Promise<void>;
+  onFinalizeAudit?: (auditId: string) => Promise<void>;
+}
+// ... (rest of the file)
 import Modal from './shared/Modal';
 
 interface InventoryManagementProps {
