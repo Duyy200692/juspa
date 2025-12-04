@@ -10,7 +10,6 @@ interface PromotionCardProps {
   services: PromotionService[];
   onEdit?: () => void;
   onView?: () => void;
-  // NEW: Add onDelete prop
   onDelete?: () => void;
   canEdit?: boolean;
 }
@@ -48,67 +47,79 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDat
 
   return (
     <div className={`bg-white rounded-xl shadow-lg overflow-hidden border transition-transform duration-300 relative group flex flex-col h-full ${statusInfo.borderColor}`}>
-      <div className="p-6 bg-gradient-to-br from-[#FDF7F8] to-white flex justify-between items-start">
-        <div>
+      <div className="p-5 md:p-6 bg-gradient-to-br from-[#FDF7F8] to-white flex justify-between items-start">
+        <div className="flex-1 pr-2">
             <div className="flex flex-col gap-2 items-start">
-                <h3 className="font-serif text-2xl font-bold text-[#D97A7D] leading-tight">{title}</h3>
-                <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${statusInfo.colorClass}`}>
+                <h3 className="font-serif text-2xl md:text-3xl font-bold text-[#D97A7D] leading-tight">{title}</h3>
+                <span className={`text-[10px] md:text-xs font-bold px-2 py-1 rounded-full border ${statusInfo.colorClass}`}>
                     {statusInfo.label}
                 </span>
             </div>
             <p className="text-sm text-gray-500 mt-2">{subtitle}</p>
         </div>
-        <div className="flex gap-1 flex-col sm:flex-row items-end sm:items-start">
+        <div className="flex gap-2 flex-col sm:flex-row items-end sm:items-start mt-1 md:mt-0">
             {onView && (
-                <Button variant="secondary" onClick={onView} className="text-xs px-3 py-1 whitespace-nowrap">
+                <Button variant="secondary" onClick={onView} className="text-xs px-3 py-1.5 whitespace-nowrap">
                     Xem chi tiết
                 </Button>
             )}
             <div className="flex gap-1">
                 {canEdit && (
-                    <Button variant="secondary" onClick={onEdit} className="text-xs px-2 py-1">
+                    <Button variant="secondary" onClick={onEdit} className="text-xs px-2 py-1.5">
                         Edit
                     </Button>
                 )}
-                {/* NEW: Render Delete Button if onDelete is provided */}
                 {onDelete && (
-                    <Button variant="danger" onClick={onDelete} className="text-xs px-2 py-1">
+                    <Button variant="danger" onClick={onDelete} className="text-xs px-2 py-1.5">
                         Xóa
                     </Button>
                 )}
             </div>
         </div>
       </div>
-      <div className="px-6 py-4 flex-grow">
-        <div className="hidden sm:flex justify-between items-center text-xs font-bold text-gray-500 mb-3 px-4">
-          <span className="w-2/5">SERVICE</span>
-          <span className="w-1/5 text-right">FULL PRICE</span>
-          <span className="w-1/5 text-right">DISCOUNT PRICE</span>
+      
+      <div className="px-4 md:px-6 py-4 flex-grow">
+        {/* Only show table header on large screens (Landscape Tablet/Desktop) */}
+        <div className="hidden lg:flex justify-between items-center text-xs font-bold text-gray-500 mb-3 px-4">
+          <span className="w-5/12">SERVICE</span>
+          <div className="w-7/12 flex justify-end gap-8 pr-4">
+              <span className="w-24 text-right">FULL PRICE</span>
+              <span className="w-32 text-right">DISCOUNT PRICE</span>
+          </div>
         </div>
-        <ul className="space-y-4 sm:space-y-2">
+        
+        <ul className="space-y-4 lg:space-y-2">
           {services.map(service => {
             const discountPercentage = (service.fullPrice || 0) > 0 ? Math.round((((service.fullPrice || 0) - (service.discountPrice || 0)) / (service.fullPrice || 0)) * 100) : 0;
             return (
-              <li key={service.id} className="border-t border-dashed border-pink-200 py-3 flex flex-col sm:flex-row sm:items-center px-2 sm:px-4">
-                <div className="w-full sm:w-2/5 mb-2 sm:mb-0">
-                  <p className="font-bold text-sm text-[#5C3A3A] flex items-center">
+              <li key={service.id} className="border-t border-dashed border-pink-200 py-3 flex flex-col lg:flex-row lg:items-center px-2 sm:px-4 hover:bg-pink-50/30 rounded-lg transition-colors">
+                
+                {/* Service Name Section - Bigger on Tablet */}
+                <div className="w-full lg:w-5/12 mb-2 lg:mb-0 pr-2">
+                  <p className="font-bold text-base md:text-lg lg:text-sm text-[#5C3A3A] flex items-center flex-wrap gap-2">
                       {service.name}
-                      {service.isCombo && <span className="ml-2 text-[10px] bg-purple-100 text-purple-600 px-1 rounded shrink-0">COMBO</span>}
+                      {service.isCombo && <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 shrink-0">COMBO</span>}
                   </p>
-                  <p className="text-xs text-gray-500 line-clamp-1">{service.description}</p>
+                  <p className="text-xs md:text-sm lg:text-xs text-gray-500 line-clamp-2 mt-0.5">{service.description}</p>
                 </div>
-                <div className="flex w-full sm:w-3/5 justify-between sm:justify-end items-center">
-                    <div className="w-1/2 sm:w-1/3 text-left sm:text-right">
-                        <span className="text-xs text-gray-400 font-medium">Gốc: </span>
-                        <span className="text-gray-400 line-through text-sm">{formatCurrency(service.fullPrice)}</span>
+                
+                {/* Prices Section - Flexible on Tablet */}
+                <div className="flex w-full lg:w-7/12 justify-between lg:justify-end items-center gap-4 md:gap-8">
+                    <div className="flex flex-col items-start lg:items-end w-auto lg:w-24">
+                        <span className="lg:hidden text-[10px] text-gray-400 font-medium uppercase mb-0.5">Giá gốc</span>
+                        <span className="text-gray-400 line-through text-sm md:text-base lg:text-sm whitespace-nowrap">{formatCurrency(service.fullPrice)}</span>
                     </div>
-                    <div className="w-1/2 sm:w-1/3 text-right relative flex justify-end items-center">
-                       <span className="text-[#E5989B] font-bold text-lg">{formatCurrency(service.discountPrice)}</span>
-                       {discountPercentage > 0 && (
-                         <span className="ml-2 sm:absolute sm:-top-3 sm:-right-2 bg-red-500 text-white text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded-full shrink-0">
-                             -{discountPercentage}%
-                         </span>
-                       )}
+                    
+                    <div className="flex flex-col items-end w-auto lg:w-32 relative">
+                       <span className="lg:hidden text-[10px] text-[#E5989B] font-medium uppercase mb-0.5">Giá KM</span>
+                       <div className="flex items-center gap-2">
+                           <span className="text-[#E5989B] font-bold text-xl md:text-2xl lg:text-lg whitespace-nowrap">{formatCurrency(service.discountPrice)}</span>
+                           {discountPercentage > 0 && (
+                             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shrink-0">
+                                 -{discountPercentage}%
+                             </span>
+                           )}
+                       </div>
                     </div>
                 </div>
               </li>
