@@ -264,7 +264,7 @@ const App: React.FC = () => {
           updatedBatches.push({ expiryDate: item.expiryDate, quantity: item.quantity });
       }
 
-      // FIX: Use expiryDate if provided
+      // FIX: Use expiryDate if provided (This fixes TS6133)
       if (expiryDate) {
           const existingBatchIndex = updatedBatches.findIndex(b => b.expiryDate === expiryDate);
           if (existingBatchIndex >= 0) {
@@ -278,6 +278,8 @@ const App: React.FC = () => {
           if (updatedBatches.length > 0) {
               updateData.expiryDate = updatedBatches[0].expiryDate;
           }
+      } else {
+          // Logic for no expiry provided
       }
       
       await updateDoc(itemRef, updateData);
@@ -438,7 +440,6 @@ const App: React.FC = () => {
               // B. Create Transaction Record
               const transRef = doc(collection(db, 'inventory_transactions'));
               
-              // FIX: Correctly format the reason string
               const reasonStr = `Điều chỉnh kiểm kê (${session.name}): ${item.diff > 0 ? '+' : ''}${item.diff}. ${item.reason || ''}`;
               
               batch.set(transRef, {

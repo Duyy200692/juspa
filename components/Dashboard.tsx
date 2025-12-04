@@ -28,7 +28,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [selectedProposal, setSelectedProposal] = useState<Promotion | null>(null);
   const [promotionToEdit, setPromotionToEdit] = useState<Promotion | null>(null);
   
-  // Filter State
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<string>('all');
 
@@ -68,7 +67,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       }
   };
 
-  // Status Badges logic
   const getStatusBadge = (status: string) => {
     switch (status) {
       case PromotionStatus.Approved: return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">Approved</span>;
@@ -83,8 +81,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       const now = new Date();
       const start = new Date(startDate);
       const end = new Date(endDate);
-      
-      // Reset hours for accurate date comparison
       now.setHours(0,0,0,0);
       start.setHours(0,0,0,0);
       end.setHours(0,0,0,0);
@@ -120,6 +116,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               canEdit={loggedInUser.role === Role.Management}
               onEdit={() => handleOpenEditForm(promo)}
               onView={() => setSelectedProposal(promo)}
+              // FIX: Pass onDelete prop only if Management
+              onDelete={loggedInUser.role === Role.Management ? () => handleDelete(promo.id, promo.name) : undefined}
             />
           ))}
           {activePromotions.length === 0 && (
@@ -139,7 +137,6 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
             
             <div className="flex items-center gap-2 w-full md:w-auto">
-               {/* Add Filter Bar */}
                <div className="flex items-center gap-2 bg-white p-1 rounded border border-gray-200 mr-2 shadow-sm">
                     <span className="text-xs text-[#D97A7D] font-bold pl-2 flex gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg> Lọc theo thời gian:</span>
                     <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="text-xs border-none focus:ring-0 text-gray-600 bg-transparent cursor-pointer hover:text-[#D97A7D]">
@@ -176,12 +173,10 @@ const Dashboard: React.FC<DashboardProps> = ({
               <tbody className="bg-white divide-y divide-gray-200">
                   {filteredProposals.map(promo => {
                     const isOwner = promo.proposerId === loggedInUser.id;
-                    
-                    // UPDATED LOGIC: Management can always edit and delete
-                    const canEdit = loggedInUser.role === Role.Management || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
-                    
-                    // FIX: Direct check for Management role to show Delete button
                     const isManagement = loggedInUser.role === Role.Management;
+                    
+                    const canEdit = isManagement || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
+                    // FIX: Simplified Delete Logic: Management OR (Product & Owner & Pending)
                     const canDelete = isManagement || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
                     
                     const startDate = new Date(promo.startDate);
@@ -241,5 +236,4 @@ const Dashboard: React.FC<DashboardProps> = ({
   );
 };
 
-// Export Default là bắt buộc
 export default Dashboard;
