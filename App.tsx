@@ -278,11 +278,263 @@ const App: React.FC = () => {
           if (updatedBatches.length > 0) {
               updateData.expiryDate = updatedBatches[0].expiryDate;
           }
-      } else {
-          // If no expiry provided, we might still want to update total quantity but not touch batches
-          // unless we force a 'no-date' batch strategy. For now, we just update qty.
       }
       
       await updateDoc(itemRef, updateData);
 
-      await addDoc(collection(db, 'inventory_transactions
+      await addDoc(collection(db, 'inventory_transactions'), {
+          itemId,
+          itemName: item.name,
+          type: 'in',
+          quantity,
+          date: new Date().toISOString(),
+          performedBy: loggedInUser.name,
+          performedById: loggedInUser.id,
+          reason: notes || 'Nhập hàng',
+          remainingStock: newQty
+      });
+  };
+
+  const exportInventoryItem = async (itemId: string, quantity: number, reason: string) => {
+      if (!loggedInUser) return;
+      const item = inventoryItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const newQty = Math.max(0, item.quantity - quantity);
+      const itemRef = doc(db, 'inventory', itemId);
+      
+      const updateData: any = { quantity: newQty };
+
+      // FIFO Logic
+      if (item.batches && item.batches.length > 0) {
+          let remainingToDeduct = quantity;
+          const updatedBatches = item.batches.map(b => ({...b}));
+          updatedBatches.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+
+          for (let i = 0; i < updatedBatches.length; i++) {
+              if (remainingToDeduct <= 0) break;
+              if (updatedBatches[i].quantity >= remainingToDeduct) {
+                  updatedBatches[i].quantity -= remainingToDeduct;
+                  remainingToDeduct = 0;
+              } else {
+                  remainingToDeduct -= updatedBatches[i].quantity;
+                  updatedBatches[i].quantity = 0;
+              }
+          }
+          const finalBatches = updatedBatches.filter(b => b.quantity > 0);
+          updateData.batches = finalBatches;
+          
+          if (finalBatches.length > 0) {
+              updateData.expiryDate = finalBatches[0].expiryDate;
+          } else {
+              updateData.expiryDate = null;
+          }
+      }
+
+      await updateDoc(itemRef, updateData);
+
+      await addDoc(collection(db, 'inventory_transactions'), {
+          itemId,
+          itemName: item.name,
+          type: 'out',
+          quantity,
+          date: new Date().toISOString(),
+          performedBy: loggedInUser.name,
+          performedById: loggedInUser.id,
+          reason: reason,
+          remainingStock: newQty
+      });
+  };
+
+  const updateInventoryItem = async (item: InventoryItem) => {
+      const itemRef = doc(db, 'inventory', item.id);
+      await updateDoc(itemRef, { ...item } as { [key: string]: any });
+  };
+
+  const handleForceSeedInventory = async () => {
+      try {
+          const batch = writeBatch(db);
+          DEFAULT_INVENTORY.forEach(item => {
+              const docRef = doc(db, 'inventory', item.id);
+              if (item.expiryDate) {
+                  item.batches = [{ expiryDate: item.expiryDate, quantity: item.quantity }];
+              }
+              batch.set(docRef, item);
+          });
+          await batch.commit();
+          alert(`Đã nạp thành công ${DEFAULT_INVENTORY.length} mặt hàng vào kho!`);
+      } catch (e) {
+          console.error(e);
+          alert("Lỗi khi nạp dữ liệu: " + e);
+      }
+  };
+
+  // --- NEW: AUDIT LOGIC (CORE) ---
+  
+  const createAuditSession = async (month: number, year: number) => {
+      if (!loggedInUser) return;
+      const newId = `audit-${year}-${month}-${Date.now()}`;
+      
+      // 1. Snapshot current stock state
+      const items: AuditItem[] = inventoryItems.map(inv => ({
+          itemId: inv.id,
+          itemName: inv.name,
+          systemQty: inv.quantity, // Current system stock
+          actualQty: inv.quantity, // Default actual to system (user will edit this)
+          diff: 0
+      }));
+
+      const newAudit: AuditSession = {
+          id: newId,
+          name: `Kiểm kê Tháng ${month}/${year}`,
+          month,
+          year,
+          status: 'open',
+          createdBy: loggedInUser.name,
+          createdDate: new Date().toISOString(),
+          items
+      };
+
+      await setDoc(doc(db, 'audit_sessions', newId), newAudit);
+  };
+
+  const updateAuditItem = async (auditId: string, itemId: string, actualQty: number, reason: string) => {
+      const session = auditSessions.find(s => s.id === auditId);
+      if (!session) return;
+
+      const updatedItems = session.items.map(item => {
+          if (item.itemId === itemId) {
+              return { 
+                  ...item, 
+                  actualQty, 
+                  diff: actualQty - item.systemQty, // Recalculate diff
+                  reason 
+              };
+          }
+          return item;
+      });
+
+      await updateDoc(doc(db, 'audit_sessions', auditId), { items: updatedItems } as any);
+  };
+
+  const finalizeAuditSession = async (auditId: string) => {
+      const session = auditSessions.find(s => s.id === auditId);
+      if (!session) return;
+
+      const batch = writeBatch(db);
+      const today = new Date().toISOString();
+
+      // 1. Close the audit session
+      const auditRef = doc(db, 'audit_sessions', auditId);
+      batch.update(auditRef, { status: 'closed', closedDate: today });
+
+      // 2. Create Adjustments
+      for (const item of session.items) {
+          if (item.diff !== 0) {
+              // A. Update Inventory Qty
+              const invRef = doc(db, 'inventory', item.itemId);
+              batch.update(invRef, { quantity: item.actualQty }); // Set to actual count
+
+              // B. Create Transaction Record
+              const transRef = doc(collection(db, 'inventory_transactions'));
+              
+              // FIX: Correctly format the reason string
+              const reasonStr = `Điều chỉnh kiểm kê (${session.name}): ${item.diff > 0 ? '+' : ''}${item.diff}. ${item.reason || ''}`;
+              
+              batch.set(transRef, {
+                  itemId: item.itemId,
+                  itemName: item.itemName,
+                  type: 'audit_adjustment',
+                  quantity: Math.abs(item.diff),
+                  date: today,
+                  performedBy: loggedInUser?.name || 'System',
+                  performedById: loggedInUser?.id || 'system',
+                  reason: reasonStr,
+                  remainingStock: item.actualQty
+              });
+          }
+      }
+
+      await batch.commit();
+      alert("Đã chốt sổ thành công! Tồn kho đã được cập nhật theo số liệu thực tế.");
+  };
+
+  // ... (Render Logic) ...
+  if (isLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-[#FEFBFB] text-[#5C3A3A]">
+              <p className="font-serif text-xl animate-pulse">Đang kết nối tới cơ sở dữ liệu...</p>
+          </div>
+      );
+  }
+
+  if (showLanding) {
+      return <LandingPage onEnter={handleEnterSystem} />;
+  }
+
+  if (!loggedInUser) {
+    return <LoginScreen onLogin={handleLogin} error={loginError} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FDF7F8] text-[#5C3A3A]">
+      <Header
+        currentUser={loggedInUser}
+        onSwitchRole={handleSwitchRole} 
+        onUpdateUserName={handleUpdateUserName}
+        currentView={view}
+        onViewChange={setView}
+        onLogout={handleLogout}
+      />
+      <main className="p-4 sm:p-6 lg:p-8">
+        {view === 'dashboard' && (
+          <Dashboard
+            loggedInUser={loggedInUser}
+            services={services}
+            activePromotions={activePromotions}
+            proposalPromotions={proposalPromotions}
+            onAddPromotion={addPromotion}
+            onUpdatePromotion={updatePromotion}
+            onDeletePromotion={deletePromotion}
+          />
+        )}
+        
+        {view === 'services' && (
+          <ServiceManagement
+            services={services}
+            onAddService={addService}
+            onUpdateService={updateService}
+            onDeleteService={deleteService}
+          />
+        )}
+
+        {view === 'inventory' && (
+            <InventoryManagement 
+                items={inventoryItems}
+                transactions={inventoryTransactions}
+                currentUser={loggedInUser}
+                onImportItem={importInventoryItem}
+                onExportItem={exportInventoryItem}
+                onSeedData={handleForceSeedInventory}
+                onUpdateItem={updateInventoryItem}
+                // Pass Audit props
+                auditSessions={auditSessions}
+                onCreateAudit={createAuditSession}
+                onUpdateAuditItem={updateAuditItem}
+                onFinalizeAudit={finalizeAuditSession}
+            />
+        )}
+
+        {view === 'users' && loggedInUser.role === Role.Management && (
+            <UserManagement 
+                users={users}
+                onAddUser={addUser}
+                onDeleteUser={deleteUser}
+            />
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default App;
