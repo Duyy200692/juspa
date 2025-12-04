@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+// FIX: Removed unused 'AuditItem' import
 import { InventoryItem, InventoryTransaction, User, Role, AuditSession } from '../types';
 import Button from './shared/Button';
 import Modal from './shared/Modal';
@@ -16,6 +17,7 @@ interface InventoryManagementProps {
   onCreateAudit?: (month: number, year: number) => Promise<void>;
   onUpdateAuditItem?: (auditId: string, itemId: string, actualQty: number, reason: string) => Promise<void>;
   onFinalizeAudit?: (auditId: string) => Promise<void>;
+  onDeleteAudit?: (auditId: string) => Promise<void>;
 }
 
 interface ActionModalProps {
@@ -163,7 +165,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ isOpen, onClose, item, on
 const InventoryManagement: React.FC<InventoryManagementProps> = ({ 
     items, transactions, currentUser, 
     onImportItem, onExportItem, onSeedData, onUpdateItem,
-    auditSessions, onCreateAudit, onUpdateAuditItem, onFinalizeAudit
+    auditSessions, onCreateAudit, onUpdateAuditItem, onFinalizeAudit, onDeleteAudit
 }) => {
   const [tab, setTab] = useState<'stock' | 'history' | 'audit'>('stock');
   const [searchTerm, setSearchTerm] = useState('');
@@ -178,7 +180,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [newAuditMonth, setNewAuditMonth] = useState(new Date().getMonth() + 1);
   const [newAuditYear, setNewAuditYear] = useState(new Date().getFullYear());
 
-  // FIX: Renamed modalState to actionModal to be consistent
+  // FIX: Consistently use actionModal instead of modalState
   const [actionModal, setActionModal] = useState<{isOpen: boolean, type: 'in'|'out', item: InventoryItem | null}>({isOpen: false, type: 'in', item: null});
   const [editModal, setEditModal] = useState<{isOpen: boolean, item: InventoryItem | null}>({isOpen: false, item: null});
   
@@ -249,6 +251,13 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
           onCreateAudit(newAuditMonth, newAuditYear);
       }
   };
+  
+  const handleDeleteAudit = async (id: string) => {
+      if (window.confirm("Bạn có chắc chắn muốn xóa kỳ kiểm kê này?") && onDeleteAudit) {
+          await onDeleteAudit(id);
+          if (selectedAuditId === id) setSelectedAuditId(null);
+      }
+  };
 
   const exportAuditCSV = (session: AuditSession) => {
       const BOM = "\uFEFF"; 
@@ -286,6 +295,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   return (
     <div className="space-y-6">
+        {/* ... (Header & Tabs Code - SAME AS BEFORE) */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-4">
                 <h2 className="text-3xl font-serif font-bold text-[#D97A7D]">Quản lý Kho</h2>
@@ -300,6 +310,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
         </div>
 
+        {/* STOCK TAB */}
         {tab === 'stock' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
                 <div className="p-4 bg-[#FDF7F8] border-b border-pink-100 flex flex-col md:flex-row gap-4">
@@ -371,6 +382,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
         )}
 
+        {/* HISTORY TAB */}
         {tab === 'history' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
                 <div className="p-4 bg-[#FDF7F8] border-b border-pink-100 flex flex-wrap items-center gap-3">
@@ -413,6 +425,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
             </div>
         )}
 
+        {/* AUDIT TAB */}
         {tab === 'audit' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-100 p-6">
                 <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
@@ -435,29 +448,42 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
                     )}
                 </div>
 
+                {/* Audit Session List */}
                 <div className="flex gap-3 overflow-x-auto pb-4 mb-4 border-b border-gray-100 scrollbar-hide">
                     {auditSessions?.sort((a,b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()).map(session => (
-                        <button 
-                            key={session.id}
-                            onClick={() => setSelectedAuditId(session.id)}
-                            className={`px-4 py-3 rounded-lg border text-sm flex flex-col items-start min-w-[160px] transition-all ${
-                                selectedAuditId === session.id 
-                                ? 'bg-blue-50 border-blue-400 shadow-sm ring-1 ring-blue-200' 
-                                : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                            }`}
-                        >
-                            <div className="flex justify-between w-full mb-1">
-                                <span className="font-bold text-gray-800">{session.name}</span>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${session.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
-                                    {session.status === 'open' ? 'Mở' : 'Đóng'}
-                                </span>
-                            </div>
-                            <span className="text-xs text-gray-400">{new Date(session.createdDate).toLocaleDateString('vi-VN')}</span>
-                        </button>
+                        <div key={session.id} className="flex items-start group">
+                            <button 
+                                onClick={() => setSelectedAuditId(session.id)}
+                                className={`px-4 py-3 rounded-lg border text-sm flex flex-col items-start min-w-[160px] transition-all relative ${
+                                    selectedAuditId === session.id 
+                                    ? 'bg-blue-50 border-blue-400 shadow-sm ring-1 ring-blue-200' 
+                                    : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                }`}
+                            >
+                                <div className="flex justify-between w-full mb-1">
+                                    <span className="font-bold text-gray-800">{session.name}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${session.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                                        {session.status === 'open' ? 'Mở' : 'Đóng'}
+                                    </span>
+                                </div>
+                                <span className="text-xs text-gray-400">{new Date(session.createdDate).toLocaleDateString('vi-VN')}</span>
+                            </button>
+                            {/* FIX: Add Delete Audit Button */}
+                            {currentUser.role === Role.Management && (
+                                <button 
+                                    onClick={() => onDeleteAudit && onDeleteAudit(session.id)}
+                                    className="ml-1 text-gray-300 hover:text-red-500 self-center hidden group-hover:block"
+                                    title="Xóa kỳ kiểm kê"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                            )}
+                        </div>
                     ))}
                     {(!auditSessions || auditSessions.length === 0) && <p className="text-sm text-gray-400 italic">Chưa có phiếu kiểm kê nào.</p>}
                 </div>
 
+                {/* Audit Detail View */}
                 {currentAudit ? (
                     <div className="animate-fade-in">
                         <div className="flex justify-between items-end mb-4">

@@ -460,6 +460,11 @@ const App: React.FC = () => {
       alert("Đã chốt sổ thành công! Tồn kho đã được cập nhật theo số liệu thực tế.");
   };
 
+  // FIX: Add deleteAuditSession
+  const deleteAuditSession = async (auditId: string) => {
+      await deleteDoc(doc(db, 'audit_sessions', auditId));
+  };
+
   // ... (Render Logic) ...
   if (isLoading) {
       return (
@@ -523,6 +528,8 @@ const App: React.FC = () => {
                 onCreateAudit={createAuditSession}
                 onUpdateAuditItem={updateAuditItem}
                 onFinalizeAudit={finalizeAuditSession}
+                // FIX: Pass delete handler
+                onDeleteAudit={deleteAuditSession}
             />
         )}
 

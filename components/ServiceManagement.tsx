@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Service, ServiceType } from '../types';
 import Button from './shared/Button';
@@ -21,7 +20,6 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
     const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     
-    // Store manually added categories that don't have services yet
     const [extraCategories, setExtraCategories] = useState<string[]>(() => {
         try {
             const saved = localStorage.getItem('extraCategories');
@@ -46,7 +44,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         pricePromo: 0,
         pricePackage5: 0,
         pricePackage15: 0,
-        pricePackage3: 0, // Package 3
+        pricePackage3: 0,
         pricePackage5Sessions: 0,
         pricePackage10: 0,
         pricePackage20: 0,
@@ -54,7 +52,6 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
 
     const existingCategories = useMemo(() => {
         const serviceCats = services.map(s => s.category).filter(Boolean) as string[];
-        // Merge service categories with manually added extra categories
         const allCats = new Set([...serviceCats, ...extraCategories]);
         return Array.from(allCats).sort();
     }, [services, extraCategories]);
@@ -75,8 +72,6 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
     const handleNewServiceChange = (field: keyof Omit<Service, 'id'>, value: string | number) => {
         setNewService(prev => {
             const updated = { ...prev, [field]: value };
-            
-            // Auto calculate promo price if discount or original price changes
             if ((field === 'priceOriginal' || field === 'discountPercent') && updated.priceOriginal > 0) {
                 const discount = Number(updated.discountPercent) || 0;
                 if (discount > 0) {
@@ -92,20 +87,9 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         if (newService.name && newService.priceOriginal > 0) {
             onAddService({ ...newService, type: activeTab });
             setNewService({ 
-                name: '', 
-                category: '',
-                description: '', 
-                type: activeTab,
-                consultationNote: '',
-                priceOriginal: 0, 
-                discountPercent: 0,
-                pricePromo: 0,
-                pricePackage5: 0,
-                pricePackage15: 0,
-                pricePackage3: 0,
-                pricePackage5Sessions: 0,
-                pricePackage10: 0,
-                pricePackage20: 0,
+                name: '', category: '', description: '', type: activeTab, consultationNote: '',
+                priceOriginal: 0, discountPercent: 0, pricePromo: 0, pricePackage5: 0, pricePackage15: 0,
+                pricePackage3: 0, pricePackage5Sessions: 0, pricePackage10: 0, pricePackage20: 0,
             });
         } else {
             alert("Vui lòng nhập tên và giá gốc.");
@@ -118,12 +102,9 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
     };
 
     const handleUpdateCategoryName = (oldName: string, newName: string) => {
-        // Update in services
         services.filter(s => s.category === oldName).forEach(service => {
             onUpdateService({ ...service, category: newName });
         });
-        
-        // Update in extraCategories if exists
         if (extraCategories.includes(oldName)) {
             setExtraCategories(prev => prev.map(c => c === oldName ? newName : c));
         }
@@ -139,9 +120,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         <button
             onClick={() => { setActiveTab(type); setNewService(prev => ({...prev, type: type})); }}
             className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 ${
-                activeTab === type 
-                ? 'border-[#E5989B] text-[#D97A7D]' 
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === type ? 'border-[#E5989B] text-[#D97A7D]' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
         >
             {label}
@@ -158,54 +137,60 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                     <TabButton type="combo" label="Gói Combo" />
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full whitespace-nowrap">
-                            <thead className="bg-[#FDF7F8]">
+                {/* FIX: Added max-height and sticky header logic */}
+                <div className="bg-white rounded-lg shadow-md border border-gray-100 flex flex-col max-h-[75vh]">
+                    <div className="overflow-auto flex-grow">
+                        <table className="min-w-full whitespace-nowrap border-collapse">
+                            <thead className="bg-[#FDF7F8] sticky top-0 z-20 shadow-sm">
                                 <tr>
-                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-[#FDF7F8] z-10 min-w-[200px] border-r border-gray-100">Tên Dịch vụ</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50/50">Giá bán gốc</th>
-                                    <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-50/30">Giảm</th>
+                                    {/* Sticky Left Column Header */}
+                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 top-0 z-30 bg-[#FDF7F8] min-w-[200px] border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Tên Dịch vụ</th>
+                                    
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50/80 backdrop-blur-sm">Giá bán gốc</th>
+                                    <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-50/80 backdrop-blur-sm">Giảm</th>
                                     <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Giá KM/Trial</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/30">5 Tặng 5</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/30">10 Tặng 15</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 3 lần</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 5 lần</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 10 lần</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/30">Gói 20 lần</th>
-                                    <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-[#FDF7F8] z-10">Hành động</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/80 backdrop-blur-sm">5 Tặng 5</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/80 backdrop-blur-sm">10 Tặng 15</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 3 lần</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 5 lần</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 10 lần</th>
+                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 20 lần</th>
+                                    
+                                    {/* Sticky Right Column Header */}
+                                    <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 top-0 z-30 bg-[#FDF7F8] border-l border-gray-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {Object.entries(groupedServices).length > 0 ? (
                                     Object.entries(groupedServices).map(([category, items]: [string, Service[]]) => (
                                         <React.Fragment key={category}>
-                                            <tr className="bg-pink-50">
-                                                <td colSpan={11} className="py-2 px-4 font-bold text-[#D97A7D] text-sm uppercase tracking-wide sticky left-0 bg-pink-50 z-10">
+                                            <tr className="bg-pink-50/50">
+                                                <td colSpan={11} className="py-2 px-4 font-bold text-[#D97A7D] text-sm uppercase tracking-wide sticky left-0 z-10 bg-pink-50">
                                                     {category}
                                                 </td>
                                             </tr>
                                             {items.map(service => (
-                                                <tr key={service.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="py-4 px-4 sticky left-0 bg-white z-10 border-r border-gray-100 min-w-[200px]">
+                                                <tr key={service.id} className="hover:bg-gray-50 transition-colors group">
+                                                    {/* Sticky Left Column Cell */}
+                                                    <td className="py-4 px-4 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100 min-w-[200px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                                                         <p className="font-medium text-gray-900 whitespace-normal text-sm">{service.name}</p>
                                                         <p className="text-xs text-gray-500 whitespace-normal line-clamp-1">{service.description}</p>
                                                         {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
                                                     </td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-yellow-50/20 font-medium">{formatCurrency(service.priceOriginal)}</td>
-                                                    <td className="py-4 px-4 text-sm text-red-500 font-bold text-center bg-red-50/10">
-                                                        {service.discountPercent ? `${service.discountPercent}%` : '-'}
-                                                    </td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage5)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage15)}</td>
                                                     
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage3)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage5Sessions)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage10)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage20)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-yellow-50/20 font-medium">{(service.priceOriginal || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-red-500 font-bold text-center bg-red-50/10">{service.discountPercent ? `${service.discountPercent}%` : '-'}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{(service.pricePromo || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{(service.pricePackage5 || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{(service.pricePackage15 || 0).toLocaleString('vi-VN')}</td>
                                                     
-                                                    <td className="py-4 px-4 text-center sticky right-0 bg-white z-10 shadow-sm md:shadow-none border-l border-gray-100">
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage3 || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage5Sessions || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage10 || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage20 || 0).toLocaleString('vi-VN')}</td>
+                                                    
+                                                    {/* Sticky Right Column Cell */}
+                                                    <td className="py-4 px-4 text-center sticky right-0 bg-white group-hover:bg-gray-50 z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] border-l border-gray-100">
                                                          <div className="flex flex-col gap-1 items-center">
                                                             <Button variant="secondary" onClick={() => setServiceToEdit(service)} className="text-[10px] py-1 px-2 w-full">Sửa</Button>
                                                             <Button variant="danger" onClick={() => window.confirm(`Xóa dịch vụ ${service.name}?`) && onDeleteService(service.id)} className="text-[10px] py-1 px-2 w-full">Xóa</Button>
@@ -226,6 +211,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                 </div>
             </div>
             
+            {/* Form Thêm Mới - Giữ nguyên phần này */}
             <div className="bg-white p-6 rounded-lg shadow-md border border-pink-100 relative">
                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-serif font-bold text-[#D97A7D]">
@@ -272,7 +258,6 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                         <label className="block text-xs font-medium text-gray-700 bg-yellow-50 w-fit px-1 rounded">Giá bán gốc</label>
                         <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30" required/>
                     </div>
-                    {/* Discount & Promo Price */}
                     <div>
                         <label className="block text-xs font-medium text-gray-700">% Giảm</label>
                         <input type="number" value={newService.discountPercent || ''} onChange={e => handleNewServiceChange('discountPercent', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm text-red-500 font-bold" placeholder="0"/>
