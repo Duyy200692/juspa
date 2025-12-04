@@ -178,16 +178,16 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                                         {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
                                                     </td>
                                                     
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-yellow-50/20 font-medium">{(service.priceOriginal || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-yellow-50/20 font-medium">{formatCurrency(service.priceOriginal || 0)}</td>
                                                     <td className="py-4 px-4 text-sm text-red-500 font-bold text-center bg-red-50/10">{service.discountPercent ? `${service.discountPercent}%` : '-'}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{(service.pricePromo || 0).toLocaleString('vi-VN')}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{(service.pricePackage5 || 0).toLocaleString('vi-VN')}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{(service.pricePackage15 || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo || 0)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage5 || 0)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage15 || 0)}</td>
                                                     
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage3 || 0).toLocaleString('vi-VN')}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage5Sessions || 0).toLocaleString('vi-VN')}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage10 || 0).toLocaleString('vi-VN')}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{(service.pricePackage20 || 0).toLocaleString('vi-VN')}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage3 || 0)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage5Sessions || 0)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage10 || 0)}</td>
+                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage20 || 0)}</td>
                                                     
                                                     {/* Sticky Right Column Cell */}
                                                     <td className="py-4 px-4 text-center sticky right-0 bg-white group-hover:bg-gray-50 z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] border-l border-gray-100">

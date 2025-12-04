@@ -468,10 +468,10 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
                                 </div>
                                 <span className="text-xs text-gray-400">{new Date(session.createdDate).toLocaleDateString('vi-VN')}</span>
                             </button>
-                            {/* FIX: Add Delete Audit Button */}
+                            {/* FIX: Add Delete Audit Button and use handleDeleteAudit */}
                             {currentUser.role === Role.Management && (
                                 <button 
-                                    onClick={() => onDeleteAudit && onDeleteAudit(session.id)}
+                                    onClick={() => handleDeleteAudit(session.id)}
                                     className="ml-1 text-gray-300 hover:text-red-500 self-center hidden group-hover:block"
                                     title="Xóa kỳ kiểm kê"
                                 >
