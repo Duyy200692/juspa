@@ -179,7 +179,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                     
                     // UPDATED LOGIC: Management can always edit and delete
                     const canEdit = loggedInUser.role === Role.Management || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
-                    const canDelete = loggedInUser.role === Role.Management || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
+                    
+                    // FIX: Direct check for Management role to show Delete button
+                    const isManagement = loggedInUser.role === Role.Management;
+                    const canDelete = isManagement || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
                     
                     const startDate = new Date(promo.startDate);
                     const monthYear = `Tháng ${startDate.getMonth() + 1} ${startDate.getFullYear()}`;
