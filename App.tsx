@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+// FIX: Import directly from firebase SDK for real connection
 import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query, addDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
@@ -10,6 +11,7 @@ import UserManagement from './components/UserManagement';
 import LandingPage from './components/LandingPage';
 import InventoryManagement from './components/InventoryManagement';
 import { User, Promotion, Service, Role, InventoryItem, InventoryTransaction, AuditSession, AuditItem } from './types';
+// FIX: Ensure DEFAULT_PROMOTIONS is used
 import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS, INVENTORY_ITEMS as DEFAULT_INVENTORY } from './constants';
 
 type View = 'dashboard' | 'services' | 'users' | 'inventory';
@@ -22,7 +24,7 @@ const App: React.FC = () => {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]);
   
-  // NEW: Audit State
+  // Audit State
   const [auditSessions, setAuditSessions] = useState<AuditSession[]>([]);
   
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
@@ -33,48 +35,105 @@ const App: React.FC = () => {
   // --- Firebase Real-time Listener ---
   useEffect(() => {
     const seedInitialData = async () => {
-        // ... (Logic seed cũ giữ nguyên)
+        console.log("Checking for initial data...");
         try {
+            // 1. Check & Seed Users
             const usersSnap = await getDocs(collection(db, 'users'));
             if (usersSnap.empty) {
+                console.log("Seeding users...");
                 const batch = writeBatch(db);
-                DEFAULT_USERS.forEach(user => batch.set(doc(db, 'users', user.id), user));
+                DEFAULT_USERS.forEach(user => {
+                    const docRef = doc(db, 'users', user.id);
+                    batch.set(docRef, user);
+                });
                 await batch.commit();
             }
+
+            // 2. Check & Seed Services
             const servicesSnap = await getDocs(collection(db, 'services'));
             if (servicesSnap.empty) {
+                console.log("Seeding services...");
                 const batch = writeBatch(db);
-                DEFAULT_SERVICES.forEach(service => batch.set(doc(db, 'services', service.id), service));
+                DEFAULT_SERVICES.forEach(service => {
+                    const docRef = doc(db, 'services', service.id);
+                    batch.set(docRef, service);
+                });
                 await batch.commit();
             }
-            // ...
-        } catch (err) { console.error(err); }
+
+             // 3. Check & Seed Promotions (FIX: Using DEFAULT_PROMOTIONS here to avoid TS6133)
+            const promotionsSnap = await getDocs(collection(db, 'promotions'));
+            if (promotionsSnap.empty) {
+                console.log("Seeding promotions...");
+                const batch = writeBatch(db);
+                DEFAULT_PROMOTIONS.forEach(promo => {
+                    const docRef = doc(db, 'promotions', promo.id);
+                    batch.set(docRef, promo);
+                });
+                await batch.commit();
+            }
+
+            // 4. Check & Seed Inventory
+            const inventorySnap = await getDocs(collection(db, 'inventory'));
+            if (inventorySnap.empty) {
+                console.log("Seeding inventory...");
+                const batch = writeBatch(db);
+                DEFAULT_INVENTORY.forEach(item => {
+                    const docRef = doc(db, 'inventory', item.id);
+                    // Init batch for seeded items if expiry exists
+                    if (item.expiryDate) {
+                        item.batches = [{ expiryDate: item.expiryDate, quantity: item.quantity }];
+                    }
+                    batch.set(docRef, item);
+                });
+                await batch.commit();
+            }
+
+        } catch (err) {
+            console.error("Error seeding data:", err);
+        }
     };
 
     const setupListeners = () => {
+        // Listeners for all collections
         const unsubUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
-            setUsers(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
+            const loadedUsers = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+            setUsers(loadedUsers);
         });
+
         const unsubServices = onSnapshot(query(collection(db, "services")), (snapshot) => {
-            setServices(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Service)).sort((a, b) => (a.category || '').localeCompare(b.category || '')));
+            const loadedServices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Service));
+            setServices(loadedServices.sort((a, b) => (a.category || '').localeCompare(b.category || '')));
         });
+
         const unsubPromotions = onSnapshot(query(collection(db, "promotions")), (snapshot) => {
-            setPromotions(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Promotion)));
+            const loadedPromotions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Promotion));
+            setPromotions(loadedPromotions);
         });
+
         const unsubInventory = onSnapshot(query(collection(db, "inventory")), (snapshot) => {
-            setInventoryItems(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryItem)));
+            const loadedItems = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryItem));
+            setInventoryItems(loadedItems);
         });
+
         const unsubTransactions = onSnapshot(query(collection(db, "inventory_transactions")), (snapshot) => {
-            setInventoryTransactions(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryTransaction)));
+            const loadedTrans = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryTransaction));
+            setInventoryTransactions(loadedTrans);
         });
-        
-        // NEW: Audit Listener
+
+        // Audit Listener
         const unsubAudits = onSnapshot(query(collection(db, "audit_sessions")), (snapshot) => {
-            setAuditSessions(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AuditSession)));
+            const loadedAudits = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AuditSession));
+            setAuditSessions(loadedAudits);
         });
         
         return () => {
-            unsubUsers(); unsubServices(); unsubPromotions(); unsubInventory(); unsubTransactions(); unsubAudits();
+            unsubUsers();
+            unsubServices();
+            unsubPromotions();
+            unsubInventory();
+            unsubTransactions();
+            unsubAudits();
         };
     };
 
@@ -82,204 +141,148 @@ const App: React.FC = () => {
         const unsubscribe = setupListeners();
         setIsLoading(false);
         return unsubscribe;
+    }).catch(error => {
+        console.error("Firebase initialization error:", error);
+        alert("Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra lại cấu hình Firebase và kết nối mạng.");
+        setIsLoading(false);
     });
+
   }, []);
 
-  // ... (Keep existing auth/view logic) ...
-  // (Tôi lược bớt phần này để tập trung vào code mới, bạn giữ nguyên code cũ nhé)
-  const activePromotions = useMemo(() => promotions.filter(p => p.status === 'Approved' && new Date(p.endDate) >= new Date()), [promotions]);
-  const proposalPromotions = useMemo(() => promotions.filter(p => p.status !== 'Approved' || new Date(p.endDate) < new Date()), [promotions]);
-  const handleLogin = (u: string, p: string) => {
-      const user = users.find(usr => usr.username === u && usr.password === p);
-      if (user) { setLoggedInUser(user); setLoginError(''); } else { setLoginError('Sai thông tin'); }
-  };
-  const handleLogout = () => { setLoggedInUser(null); setView('dashboard'); setShowLanding(true); };
-  const handleEnterSystem = () => setShowLanding(false);
-  const handleSwitchRole = (role: Role) => { 
-      const u = users.find(user => user.role === role);
-      if(u) setLoggedInUser(u);
-  };
-  const handleUpdateUserName = async (name: string) => { if(loggedInUser) await updateDoc(doc(db, 'users', loggedInUser.id), {name}); };
+  // ... (Keep existing computed values and auth handlers) ...
+  const activePromotions = useMemo(() => {
+    const now = new Date();
+    return promotions.filter(p => 
+      p.status === 'Approved' && 
+      new Date(p.endDate) >= now
+    ).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  }, [promotions]);
 
-  // ... (Keep existing CRUD actions for User/Service/Promotion) ...
-  const addUser = async (data: any) => await setDoc(doc(db, 'users', `user-${Date.now()}`), data);
-  const deleteUser = async (id: string) => await deleteDoc(doc(db, 'users', id));
-  const addService = async (data: any) => await setDoc(doc(db, 'services', `service-${Date.now()}`), data);
-  const updateService = async (data: any) => await updateDoc(doc(db, 'services', data.id), data);
-  const deleteService = async (id: string) => await deleteDoc(doc(db, 'services', id));
-  const addPromotion = async (data: any) => await setDoc(doc(db, 'promotions', `promo-${Date.now()}`), data);
-  const updatePromotion = async (data: any) => await updateDoc(doc(db, 'promotions', data.id), data);
-  const deletePromotion = async (id: string) => await deleteDoc(doc(db, 'promotions', id));
+  const proposalPromotions = useMemo(() => {
+    const now = new Date();
+    return promotions.filter(p => 
+        p.status !== 'Approved' || 
+        new Date(p.endDate) < now
+    );
+  }, [promotions]);
 
-  // ... (Inventory Import/Export/Update Logic - Keep unchanged) ...
+  const handleLogin = (username: string, password: string) => {
+      const user = users.find(u => u.username === username && u.password === password);
+      if (user) {
+          setLoggedInUser(user);
+          setLoginError('');
+      } else {
+         setLoginError('Tên đăng nhập hoặc mật khẩu không đúng.');
+      }
+  };
+
+  const handleLogout = () => {
+      setLoggedInUser(null);
+      setView('dashboard');
+      setShowLanding(true);
+  };
+  
+  const handleEnterSystem = () => {
+      setShowLanding(false);
+  };
+
+    const handleSwitchRole = (newRole: Role) => {
+      const targetUser = users.find(u => u.role === newRole);
+      if (targetUser) {
+          setLoggedInUser(targetUser);
+          if (newRole !== Role.Management && view === 'users') {
+              setView('dashboard');
+          }
+      } else {
+          alert(`Không tìm thấy tài khoản cho vai trò ${newRole}`);
+      }
+  };
+
+  const handleUpdateUserName = async (newName: string) => {
+    if (loggedInUser) {
+        const userRef = doc(db, 'users', loggedInUser.id);
+        await updateDoc(userRef, { name: newName } as { [key: string]: any });
+    }
+  };
+
+  // --- Actions ---
+  const addUser = async (newUserData: Omit<User, 'id'>) => {
+    const newId = `user-${Date.now()}`;
+    const userRef = doc(db, 'users', newId);
+    await setDoc(userRef, { ...newUserData, id: newId });
+  };
+  
+  const deleteUser = async (userId: string) => {
+      await deleteDoc(doc(db, 'users', userId));
+  };
+
+  const addPromotion = async (newPromotionData: Omit<Promotion, 'id'>) => {
+    const newId = `promo-${Date.now()}`;
+    const promoRef = doc(db, 'promotions', newId);
+    await setDoc(promoRef, { ...newPromotionData, id: newId });
+  };
+  
+  const updatePromotion = async (updatedPromotion: Promotion) => {
+    const promoRef = doc(db, 'promotions', updatedPromotion.id);
+    await updateDoc(promoRef, { ...updatedPromotion } as { [key: string]: any });
+  };
+
+  const deletePromotion = async (promotionId: string) => {
+    await deleteDoc(doc(db, 'promotions', promotionId));
+  };
+
+  const addService = async (newServiceData: Omit<Service, 'id'>) => {
+    const newId = `service-${Date.now()}`;
+    const serviceRef = doc(db, 'services', newId);
+    await setDoc(serviceRef, { ...newServiceData, id: newId });
+  };
+  
+  const updateService = async (updatedService: Service) => {
+    const serviceRef = doc(db, 'services', updatedService.id);
+    await updateDoc(serviceRef, { ...updatedService } as { [key: string]: any });
+  };
+  
+  const deleteService = async (serviceId: string) => {
+    await deleteDoc(doc(db, 'services', serviceId));
+  }
+
+  // --- Inventory Actions ---
   const importInventoryItem = async (itemId: string, quantity: number, notes?: string, expiryDate?: string) => {
       if (!loggedInUser) return;
       const item = inventoryItems.find(i => i.id === itemId);
       if (!item) return;
-      
-      // ... (Logic batch update - giữ nguyên như bản trước)
-      // Tạm viết tắt để code gọn, bạn giữ nguyên code cũ nhé
+
       const newQty = item.quantity + quantity;
       const itemRef = doc(db, 'inventory', itemId);
       
-      // Simple update for brevity in this snippet, please use full logic from previous step
-      await updateDoc(itemRef, { quantity: newQty } as any); 
-
-      await addDoc(collection(db, 'inventory_transactions'), {
-          itemId, itemName: item.name, type: 'in', quantity, date: new Date().toISOString(),
-          performedBy: loggedInUser.name, performedById: loggedInUser.id, reason: notes || 'Nhập hàng', remainingStock: newQty
-      });
-  };
-
-  const exportInventoryItem = async (itemId: string, quantity: number, reason: string) => {
-      if (!loggedInUser) return;
-      const item = inventoryItems.find(i => i.id === itemId);
-      if (!item) return;
+      const updateData: any = { quantity: newQty };
       
-      const newQty = Math.max(0, item.quantity - quantity);
-      // ... (Logic FIFO batch update - giữ nguyên như bản trước)
-      await updateDoc(doc(db, 'inventory', itemId), { quantity: newQty } as any);
-
-      await addDoc(collection(db, 'inventory_transactions'), {
-          itemId, itemName: item.name, type: 'out', quantity, date: new Date().toISOString(),
-          performedBy: loggedInUser.name, performedById: loggedInUser.id, reason, remainingStock: newQty
-      });
-  };
-
-  const updateInventoryItem = async (item: InventoryItem) => {
-      await updateDoc(doc(db, 'inventory', item.id), { ...item } as any);
-  };
-
-  const handleForceSeedInventory = async () => {
-      try {
-          const batch = writeBatch(db);
-          DEFAULT_INVENTORY.forEach(item => {
-              const docRef = doc(db, 'inventory', item.id);
-              if (item.expiryDate) item.batches = [{ expiryDate: item.expiryDate, quantity: item.quantity }];
-              batch.set(docRef, item);
-          });
-          await batch.commit();
-          alert("Đã nạp dữ liệu thành công!");
-      } catch(e) { alert("Lỗi: " + e); }
-  };
-
-  // --- NEW: AUDIT LOGIC (CORE) ---
-  
-  const createAuditSession = async (month: number, year: number) => {
-      if (!loggedInUser) return;
-      const newId = `audit-${year}-${month}-${Date.now()}`;
+      // Batch Logic
+      let updatedBatches = item.batches ? [...item.batches] : [];
       
-      // 1. Snapshot current stock state
-      const items: AuditItem[] = inventoryItems.map(inv => ({
-          itemId: inv.id,
-          itemName: inv.name,
-          systemQty: inv.quantity, // Current system stock
-          actualQty: inv.quantity, // Default actual to system (user will edit this)
-          diff: 0
-      }));
-
-      const newAudit: AuditSession = {
-          id: newId,
-          name: `Kiểm kê Tháng ${month}/${year}`,
-          month,
-          year,
-          status: 'open',
-          createdBy: loggedInUser.name,
-          createdDate: new Date().toISOString(),
-          items
-      };
-
-      await setDoc(doc(db, 'audit_sessions', newId), newAudit);
-  };
-
-  const updateAuditItem = async (auditId: string, itemId: string, actualQty: number, reason: string) => {
-      const session = auditSessions.find(s => s.id === auditId);
-      if (!session) return;
-
-      const updatedItems = session.items.map(item => {
-          if (item.itemId === itemId) {
-              return { 
-                  ...item, 
-                  actualQty, 
-                  diff: actualQty - item.systemQty, // Recalculate diff
-                  reason 
-              };
-          }
-          return item;
-      });
-
-      await updateDoc(doc(db, 'audit_sessions', auditId), { items: updatedItems } as any);
-  };
-
-  const finalizeAuditSession = async (auditId: string) => {
-      const session = auditSessions.find(s => s.id === auditId);
-      if (!session) return;
-
-      const batch = writeBatch(db);
-      const today = new Date().toISOString();
-
-      // 1. Close the audit session
-      const auditRef = doc(db, 'audit_sessions', auditId);
-      batch.update(auditRef, { status: 'closed', closedDate: today });
-
-      // 2. Create Adjustments
-      for (const item of session.items) {
-          if (item.diff !== 0) {
-              // A. Update Inventory Qty
-              const invRef = doc(db, 'inventory', item.itemId);
-              batch.update(invRef, { quantity: item.actualQty }); // Set to actual count
-
-              // B. Create Transaction Record
-              const transRef = doc(collection(db, 'inventory_transactions'));
-              batch.set(transRef, {
-                  itemId: item.itemId,
-                  itemName: item.itemName,
-                  type: 'audit_adjustment',
-                  quantity: Math.abs(item.diff),
-                  date: today,
-                  performedBy: loggedInUser?.name || 'System',
-                  performedById: loggedInUser?.id || 'system',
-                  reason: `Điều chỉnh kiểm kê (${session.name}): ${item.diff > 0 ? '+' : ''}${item.diff}. ${item.reason || ''}`,
-                  remainingStock: item.actualQty
-              });
-          }
+      if (item.expiryDate && updatedBatches.length === 0) {
+          updatedBatches.push({ expiryDate: item.expiryDate, quantity: item.quantity });
       }
 
-      await batch.commit();
-      alert("Đã chốt sổ thành công! Tồn kho đã được cập nhật theo số liệu thực tế.");
-  };
+      // FIX: Use expiryDate if provided
+      if (expiryDate) {
+          const existingBatchIndex = updatedBatches.findIndex(b => b.expiryDate === expiryDate);
+          if (existingBatchIndex >= 0) {
+              updatedBatches[existingBatchIndex].quantity += quantity;
+          } else {
+              updatedBatches.push({ expiryDate, quantity });
+          }
+          updatedBatches.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+          
+          updateData.batches = updatedBatches;
+          if (updatedBatches.length > 0) {
+              updateData.expiryDate = updatedBatches[0].expiryDate;
+          }
+      } else {
+          // If no expiry provided, we might still want to update total quantity but not touch batches
+          // unless we force a 'no-date' batch strategy. For now, we just update qty.
+      }
+      
+      await updateDoc(itemRef, updateData);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Đang tải...</div>;
-  if (showLanding) return <LandingPage onEnter={handleEnterSystem} />;
-  if (!loggedInUser) return <LoginScreen onLogin={handleLogin} error={loginError} />;
-
-  return (
-    <div className="min-h-screen bg-[#FDF7F8] text-[#5C3A3A]">
-      <Header currentUser={loggedInUser} onSwitchRole={handleSwitchRole} onUpdateUserName={handleUpdateUserName} currentView={view} onViewChange={setView} onLogout={handleLogout} />
-      <main className="p-4 sm:p-6 lg:p-8">
-        {view === 'dashboard' && <Dashboard loggedInUser={loggedInUser} services={services} activePromotions={activePromotions} proposalPromotions={proposalPromotions} onAddPromotion={addPromotion} onUpdatePromotion={updatePromotion} onDeletePromotion={deletePromotion} />}
-        {view === 'services' && <ServiceManagement services={services} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
-        {view === 'users' && loggedInUser.role === Role.Management && <UserManagement users={users} onAddUser={addUser} onDeleteUser={deleteUser} />}
-        
-        {view === 'inventory' && (
-            <InventoryManagement 
-                items={inventoryItems}
-                transactions={inventoryTransactions}
-                currentUser={loggedInUser}
-                onImportItem={importInventoryItem}
-                onExportItem={exportInventoryItem}
-                onSeedData={handleForceSeedInventory}
-                onUpdateItem={updateInventoryItem}
-                // Pass new Audit props
-                auditSessions={auditSessions}
-                onCreateAudit={createAuditSession}
-                onUpdateAuditItem={updateAuditItem}
-                onFinalizeAudit={finalizeAuditSession}
-            />
-        )}
-      </main>
-    </div>
-  );
-};
-
-export default App;
+      await addDoc(collection(db, 'inventory_transactions
