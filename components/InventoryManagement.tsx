@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from 'react';
-// FIX: Removed unused 'AuditItem' import to fix TS6133 build error
 import { InventoryItem, InventoryTransaction, User, Role, AuditSession } from '../types';
 import Button from './shared/Button';
 import Modal from './shared/Modal';
@@ -173,14 +172,14 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const [historyMonth, setHistoryMonth] = useState<string>('all');
   const [historyYear, setHistoryYear] = useState<string>('all');
 
-  // Audit Filter Location
   const [auditFilterLocation, setAuditFilterLocation] = useState('all');
 
   const [selectedAuditId, setSelectedAuditId] = useState<string | null>(null);
   const [newAuditMonth, setNewAuditMonth] = useState(new Date().getMonth() + 1);
   const [newAuditYear, setNewAuditYear] = useState(new Date().getFullYear());
 
-  const [modalState, setModalState] = useState<{isOpen: boolean, type: 'in'|'out', item: InventoryItem | null}>({isOpen: false, type: 'in', item: null});
+  // FIX: Renamed modalState to actionModal to be consistent
+  const [actionModal, setActionModal] = useState<{isOpen: boolean, type: 'in'|'out', item: InventoryItem | null}>({isOpen: false, type: 'in', item: null});
   const [editModal, setEditModal] = useState<{isOpen: boolean, item: InventoryItem | null}>({isOpen: false, item: null});
   
   const [isSeeding, setIsSeeding] = useState(false);
@@ -225,15 +224,15 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
   };
 
   const openActionModal = (type: 'in' | 'out', item: InventoryItem) => {
-      setModalState({ isOpen: true, type, item });
+      setActionModal({ isOpen: true, type, item });
   };
 
   const handleActionSubmit = async (qty: number, note: string, expiry?: string) => {
-      if (!modalState.item) return;
-      if (modalState.type === 'in') {
-          await onImportItem(modalState.item.id, qty, note, expiry);
+      if (!actionModal.item) return;
+      if (actionModal.type === 'in') {
+          await onImportItem(actionModal.item.id, qty, note, expiry);
       } else {
-          await onExportItem(modalState.item.id, qty, note);
+          await onExportItem(actionModal.item.id, qty, note);
       }
   };
 
@@ -481,7 +480,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
                             </div>
                         </div>
 
-                        {/* NEW: Audit Location Filter */}
+                        {/* Audit Location Filter */}
                         <div className="mb-4 flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-200 w-fit">
                             <span className="text-xs font-bold text-gray-600 uppercase">Lọc theo vị trí kiểm kê:</span>
                             <select 
