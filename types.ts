@@ -83,7 +83,8 @@ export interface InventoryItem {
   batches?: InventoryBatch[]; // Danh sách các lô hàng
 }
 
-export type TransactionType = 'in' | 'out' | 'audit_adjustment'; // Added audit_adjustment
+// UPDATE: Added 'audit_adjustment' type
+export type TransactionType = 'in' | 'out' | 'audit_adjustment'; 
 
 export interface InventoryTransaction {
   id: string;
@@ -98,11 +99,11 @@ export interface InventoryTransaction {
   remainingStock: number;
 }
 
-// --- AUDIT TYPES (NEW) ---
+// --- NEW: AUDIT TYPES ---
 export interface AuditItem {
     itemId: string;
     itemName: string;
-    systemQty: number; // Tồn trên phần mềm
+    systemQty: number; // Tồn trên phần mềm tại thời điểm tạo phiếu
     actualQty: number; // Tồn thực tế đếm được
     diff: number; // Chênh lệch (Actual - System)
     reason?: string; // Lý do chênh lệch
