@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const availableYears = useMemo(() => {
       const years = new Set(proposalPromotions.map(p => new Date(p.startDate).getFullYear()));
       years.add(new Date().getFullYear());
-      return Array.from(years).sort((a, b) => b - a);
+      return Array.from(years).sort((a: number, b: number) => b - a);
   }, [proposalPromotions]);
 
   const filteredProposals = useMemo(() => {

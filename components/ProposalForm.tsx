@@ -264,7 +264,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
             <div>
                 <h3 className="text-md font-medium text-gray-800">1. Chọn dịch vụ có sẵn</h3>
                 <div className="mt-2 border border-gray-200 rounded-md max-h-60 overflow-y-auto bg-white">
-                    {Object.entries(groupedServices).map(([category, items]) => (
+                    {Object.entries(groupedServices).map(([category, items]: [string, Service[]]) => (
                         <div key={category}>
                             <div className="sticky top-0 bg-[#FDF7F8] px-3 py-2 text-xs font-bold text-[#D97A7D] uppercase tracking-wide border-b border-t border-gray-100 first:border-t-0 z-10">{category}</div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2">

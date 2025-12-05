@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Removed unused 'AuditItem' import
 import { InventoryItem, InventoryTransaction, User, Role, AuditSession } from '../types';
@@ -186,7 +187,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
   
   const [isSeeding, setIsSeeding] = useState(false);
 
-  const locations = useMemo(() => Array.from(new Set(items.map(i => i.location))).sort((a, b) => a.localeCompare(b)), [items]);
+  const locations = useMemo(() => Array.from(new Set(items.map(i => i.location))).sort((a: string, b: string) => a.localeCompare(b)), [items]);
 
   const filteredItems = useMemo(() => {
       return items.filter(item => {
@@ -199,7 +200,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
   const availableYears = useMemo(() => {
       const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
       years.add(new Date().getFullYear());
-      return Array.from(years).sort((a, b) => b - a);
+      return Array.from(years).sort((a: number, b: number) => b - a);
   }, [transactions]);
 
   const filteredTransactions = useMemo(() => {

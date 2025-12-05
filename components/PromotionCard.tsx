@@ -20,6 +20,17 @@ const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat('vi-VN').format(value);
 };
 
+// Helper to parse combo description into list items
+const parseComboItems = (description: string): string[] => {
+    if (!description) return [];
+    // Remove "Bao gồm: " prefix if present
+    let cleanDesc = description.replace(/^Bao gồm:\s*/i, '');
+    if (cleanDesc.endsWith('.')) cleanDesc = cleanDesc.slice(0, -1);
+    
+    // Split by comma
+    return cleanDesc.split(',').map(item => item.trim()).filter(Boolean);
+};
+
 const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDate, endDate, services, onEdit, onView, onDelete, canEdit }) => {
   
   const getTimeStatus = () => {
@@ -92,8 +103,10 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDat
         <ul className="space-y-4 lg:space-y-2">
           {services.map(service => {
             const discountPercentage = (service.fullPrice || 0) > 0 ? Math.round((((service.fullPrice || 0) - (service.discountPrice || 0)) / (service.fullPrice || 0)) * 100) : 0;
+            const comboItems = service.isCombo ? parseComboItems(service.description) : [];
+
             return (
-              <li key={service.id} className="border-t border-dashed border-pink-200 py-3 flex flex-col lg:flex-row lg:items-center px-2 sm:px-4 hover:bg-pink-50/30 rounded-lg transition-colors">
+              <li key={service.id} className="border-t border-dashed border-pink-200 py-3 flex flex-col lg:flex-row lg:items-start px-2 sm:px-4 hover:bg-pink-50/30 rounded-lg transition-colors">
                 
                 {/* Service Name Section - Bigger on Tablet */}
                 <div className="w-full lg:w-5/12 mb-2 lg:mb-0 pr-2">
@@ -101,13 +114,25 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDat
                       {service.name} {service.selectedDuration ? `(${service.selectedDuration}')` : ''}
                       {service.isCombo && <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 shrink-0">COMBO</span>}
                   </p>
-                  <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{service.description}</p>
+                  
+                  {service.isCombo && comboItems.length > 0 ? (
+                      <div className="mt-1 pl-2 border-l-2 border-purple-200">
+                          <p className="text-[10px] text-gray-400 font-bold uppercase mb-0.5">Bao gồm:</p>
+                          <ul className="list-disc list-inside">
+                              {comboItems.map((item, idx) => (
+                                  <li key={idx} className="text-xs text-gray-600 leading-snug">{item}</li>
+                              ))}
+                          </ul>
+                      </div>
+                  ) : (
+                      <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{service.description}</p>
+                  )}
                 </div>
                 
                 {/* Prices Section - Flexible on Tablet */}
                 {/* On Tablet (md), we use flex-row with justify-between to ensure separation. */}
-                <div className="w-full lg:w-7/12 mt-2 lg:mt-0">
-                    <div className="flex items-center justify-between lg:justify-end gap-4 lg:gap-8">
+                <div className="w-full lg:w-7/12 mt-2 lg:mt-0 flex items-center lg:h-full">
+                    <div className="w-full flex items-center justify-between lg:justify-end gap-4 lg:gap-8">
                         {/* Original Price */}
                         <div className="flex flex-col items-start lg:items-end">
                             <span className="lg:hidden text-[10px] text-gray-400 font-medium uppercase mb-0.5">Giá gốc</span>

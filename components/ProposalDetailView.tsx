@@ -19,6 +19,14 @@ const DetailSection: React.FC<{title: string; children: React.ReactNode}> = ({ t
     </div>
 );
 
+// Helper to parse combo description into list items (duplicated for standalone usage in modal)
+const parseComboItems = (description: string): string[] => {
+    if (!description) return [];
+    let cleanDesc = description.replace(/^Bao gồm:\s*/i, '');
+    if (cleanDesc.endsWith('.')) cleanDesc = cleanDesc.slice(0, -1);
+    return cleanDesc.split(',').map(item => item.trim()).filter(Boolean);
+};
+
 const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose, proposal, currentUser, onUpdate }) => {
   const [marketingNotes, setMarketingNotes] = useState(proposal.marketingNotes || '');
   const [designUrl, setDesignUrl] = useState(proposal.designUrl || '');
@@ -42,9 +50,6 @@ const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose
   const canMarketingAct = isMarketing && proposal.status === PromotionStatus.PendingDesign;
   const canManagementAct = isManagement && proposal.status === PromotionStatus.PendingApproval;
   
-  // Logic to determine which steps to show
-  // If proposal has a custom note (saved by Sale), show it. 
-  // Otherwise, fallback to generating from services (backward compatibility).
   const consultationSteps = proposal.consultationNote || proposal.services
     .filter(s => s.consultationNote)
     .map(s => `• ${s.name}${s.selectedDuration ? ` (${s.selectedDuration}')` : ''}:\n${s.consultationNote}`)
@@ -57,12 +62,31 @@ const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose
         <DetailSection title="Promotion Dates">{proposal.startDate} to {proposal.endDate}</DetailSection>
         
         <DetailSection title="Services & Pricing">
-            <ul className="list-disc pl-5 space-y-1">
+            <ul className="list-disc pl-5 space-y-2">
                 {proposal.services.map(s => (
                     <li key={s.id}>
-                        {s.name} {s.selectedDuration ? `(${s.selectedDuration}')` : ''}
-                        {s.isCombo && <span className="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">COMBO</span>}
-                        : <span className="line-through">{s.fullPrice.toLocaleString()}</span> &rarr; <span className="font-bold text-[#E5989B]">{s.discountPrice.toLocaleString()}</span>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span className="font-medium">
+                                {s.name} {s.selectedDuration ? `(${s.selectedDuration}')` : ''}
+                                {s.isCombo && <span className="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">COMBO</span>}
+                            </span>
+                            <span className="hidden sm:inline text-gray-400 mx-2">-</span>
+                            <div>
+                                <span className="line-through text-gray-400 text-sm">{s.fullPrice.toLocaleString()}</span> 
+                                <span className="mx-1">&rarr;</span> 
+                                <span className="font-bold text-[#E5989B] text-lg">{s.discountPrice.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        {s.isCombo && (
+                            <div className="mt-1 ml-2 text-xs bg-gray-50 p-2 rounded border border-gray-100 text-gray-600">
+                                <strong>Chi tiết Combo:</strong>
+                                <ul className="list-circle list-inside ml-2 mt-1">
+                                    {parseComboItems(s.description).map((item, idx) => (
+                                        <li key={idx}>{item}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </li>
                 ))}
             </ul>
