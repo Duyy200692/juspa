@@ -121,10 +121,12 @@ const App: React.FC = () => {
             }
 
             // 2b. Check & Seed Spa Services (Specific Check)
-            // Even if services exist, we check if 'spa' type exists. If not, we try to seed.
+            // Modified Logic: If we have fewer than 10 spa services, we attempt to seed the rest.
+            // This handles cases where user might have created 1 manual service, preventing the previous .empty check from running.
             const spaQuery = query(collection(db, 'services'), where('type', '==', 'spa'));
             const spaSnap = await getDocs(spaQuery);
-            if (spaSnap.empty) {
+            if (spaSnap.size < 10) {
+                console.log("Spa services seem incomplete (count < 10). Attempting to seed defaults...");
                 await seedSpaServicesBatch();
             }
 
