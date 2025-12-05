@@ -79,7 +79,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDat
       </div>
       
       <div className="px-4 md:px-6 py-4 flex-grow">
-        {/* Only show table header on large screens (Landscape Tablet/Desktop) */}
+        {/* Only show table header on large screens (Desktop) */}
         <div className="hidden lg:flex justify-between items-center text-xs font-bold text-gray-500 mb-3 px-4">
           <span className="w-5/12">SERVICE</span>
           <div className="w-7/12 flex justify-end gap-8 pr-4">
@@ -96,30 +96,35 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDat
                 
                 {/* Service Name Section - Bigger on Tablet */}
                 <div className="w-full lg:w-5/12 mb-2 lg:mb-0 pr-2">
-                  <p className="font-bold text-base md:text-lg lg:text-sm text-[#5C3A3A] flex items-center flex-wrap gap-2">
+                  <p className="font-bold text-lg md:text-xl lg:text-sm text-[#5C3A3A] flex items-center flex-wrap gap-2">
                       {service.name}
                       {service.isCombo && <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 shrink-0">COMBO</span>}
                   </p>
-                  <p className="text-xs md:text-sm lg:text-xs text-gray-500 line-clamp-2 mt-0.5">{service.description}</p>
+                  <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{service.description}</p>
                 </div>
                 
                 {/* Prices Section - Flexible on Tablet */}
-                <div className="flex w-full lg:w-7/12 justify-between lg:justify-end items-center gap-4 md:gap-8">
-                    <div className="flex flex-col items-start lg:items-end w-auto lg:w-24">
-                        <span className="lg:hidden text-[10px] text-gray-400 font-medium uppercase mb-0.5">Giá gốc</span>
-                        <span className="text-gray-400 line-through text-sm md:text-base lg:text-sm whitespace-nowrap">{formatCurrency(service.fullPrice)}</span>
-                    </div>
-                    
-                    <div className="flex flex-col items-end w-auto lg:w-32 relative">
-                       <span className="lg:hidden text-[10px] text-[#E5989B] font-medium uppercase mb-0.5">Giá KM</span>
-                       <div className="flex items-center gap-2">
-                           <span className="text-[#E5989B] font-bold text-xl md:text-2xl lg:text-lg whitespace-nowrap">{formatCurrency(service.discountPrice)}</span>
-                           {discountPercentage > 0 && (
-                             <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shrink-0">
-                                 -{discountPercentage}%
-                             </span>
-                           )}
-                       </div>
+                {/* On Tablet (md), we use flex-row with justify-between to ensure separation. */}
+                <div className="w-full lg:w-7/12 mt-2 lg:mt-0">
+                    <div className="flex items-center justify-between lg:justify-end gap-4 lg:gap-8">
+                        {/* Original Price */}
+                        <div className="flex flex-col items-start lg:items-end">
+                            <span className="lg:hidden text-[10px] text-gray-400 font-medium uppercase mb-0.5">Giá gốc</span>
+                            <span className="text-gray-400 line-through text-sm md:text-lg lg:text-sm whitespace-nowrap">{formatCurrency(service.fullPrice)}</span>
+                        </div>
+                        
+                        {/* Discount Price */}
+                        <div className="flex flex-col items-end relative">
+                           <span className="lg:hidden text-[10px] text-[#E5989B] font-medium uppercase mb-0.5">Giá KM</span>
+                           <div className="flex items-center gap-2">
+                               <span className="text-[#E5989B] font-bold text-2xl md:text-3xl lg:text-lg whitespace-nowrap">{formatCurrency(service.discountPrice)}</span>
+                               {discountPercentage > 0 && (
+                                 <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm shrink-0">
+                                     -{discountPercentage}%
+                                 </span>
+                               )}
+                           </div>
+                        </div>
                     </div>
                 </div>
               </li>

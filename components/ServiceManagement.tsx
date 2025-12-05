@@ -9,13 +9,15 @@ interface ServiceManagementProps {
     onAddService: (service: Omit<Service, 'id'>) => void;
     onUpdateService: (service: Service) => void;
     onDeleteService: (serviceId: string) => void;
+    onSeedSpaServices?: () => Promise<void>;
 }
 
-const formatCurrency = (value: number) => {
+const formatCurrency = (value: number | undefined) => {
+    if (!value) return '-';
     return new Intl.NumberFormat('vi-VN').format(value);
 };
 
-const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddService, onUpdateService, onDeleteService }) => {
+const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddService, onUpdateService, onDeleteService, onSeedSpaServices }) => {
     const [activeTab, setActiveTab] = useState<ServiceType>('single');
     const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -48,6 +50,10 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         pricePackage5Sessions: 0,
         pricePackage10: 0,
         pricePackage20: 0,
+        price30: 0,
+        price60: 0,
+        price90: 0,
+        price120: 0,
     });
 
     const existingCategories = useMemo(() => {
@@ -84,15 +90,22 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
 
     const handleAddNewService = (e: React.FormEvent) => {
         e.preventDefault();
-        if (newService.name && newService.priceOriginal > 0) {
+        // Allow adding if either priceOriginal > 0 OR it's a Spa service with any time price > 0
+        const hasPrice = newService.priceOriginal > 0 || (activeTab === 'spa' && (
+            (newService.price30 || 0) > 0 || (newService.price60 || 0) > 0 || 
+            (newService.price90 || 0) > 0 || (newService.price120 || 0) > 0
+        ));
+
+        if (newService.name && hasPrice) {
             onAddService({ ...newService, type: activeTab });
             setNewService({ 
                 name: '', category: '', description: '', type: activeTab, consultationNote: '',
                 priceOriginal: 0, discountPercent: 0, pricePromo: 0, pricePackage5: 0, pricePackage15: 0,
                 pricePackage3: 0, pricePackage5Sessions: 0, pricePackage10: 0, pricePackage20: 0,
+                price30: 0, price60: 0, price90: 0, price120: 0,
             });
         } else {
-            alert("Vui lòng nhập tên và giá gốc.");
+            alert("Vui lòng nhập tên và ít nhất một mức giá hợp lệ.");
         }
     };
     
@@ -116,6 +129,13 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
         }
     };
 
+    const handleSeedClick = async () => {
+        if (!onSeedSpaServices) return;
+        if (window.confirm("Bạn có chắc muốn nạp dữ liệu menu Spa mẫu vào hệ thống không? Dữ liệu trùng tên sẽ được bỏ qua.")) {
+            await onSeedSpaServices();
+        }
+    };
+
     const TabButton = ({ type, label }: { type: ServiceType; label: string }) => (
         <button
             onClick={() => { setActiveTab(type); setNewService(prev => ({...prev, type: type})); }}
@@ -132,10 +152,19 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
             <div>
                 <h2 className="text-3xl font-serif font-bold text-[#D97A7D] mb-4">Service & Pricelist Management</h2>
                 
-                <div className="flex border-b border-gray-200 mb-6">
+                <div className="flex border-b border-gray-200 mb-6 flex-wrap gap-2">
                     <TabButton type="single" label="Gói Lẻ (Single)" />
                     <TabButton type="combo" label="Gói Combo" />
+                    <TabButton type="spa" label="Spa & Massage" />
                 </div>
+
+                {activeTab === 'spa' && onSeedSpaServices && (
+                    <div className="mb-4 flex justify-end">
+                        <Button onClick={handleSeedClick} className="text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 shadow-sm">
+                            ⚡ Nạp Menu Spa Mẫu
+                        </Button>
+                    </div>
+                )}
 
                 {/* FIX: Added max-height and sticky header logic */}
                 <div className="bg-white rounded-lg shadow-md border border-gray-100 flex flex-col max-h-[75vh]">
@@ -143,18 +172,30 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                         <table className="min-w-full whitespace-nowrap border-collapse">
                             <thead className="bg-[#FDF7F8] sticky top-0 z-20 shadow-sm">
                                 <tr>
-                                    {/* Sticky Left Column Header */}
-                                    <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 top-0 z-30 bg-[#FDF7F8] min-w-[200px] border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Tên Dịch vụ</th>
+                                    {/* Sticky Left Column Header: Reduced width for tablet visibility */}
+                                    <th className="py-3 px-2 md:px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 top-0 z-30 bg-[#FDF7F8] min-w-[100px] max-w-[100px] md:min-w-[130px] md:max-w-[130px] lg:min-w-[250px] lg:max-w-[250px] border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Tên Dịch vụ</th>
                                     
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50/80 backdrop-blur-sm">Giá bán gốc</th>
-                                    <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-50/80 backdrop-blur-sm">Giảm</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Giá KM/Trial</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/80 backdrop-blur-sm">5 Tặng 5</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/80 backdrop-blur-sm">10 Tặng 15</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 3 lần</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 5 lần</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 10 lần</th>
-                                    <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 20 lần</th>
+                                    {activeTab === 'spa' ? (
+                                        <>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50/80 backdrop-blur-sm">30 Phút</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50/80 backdrop-blur-sm">60 Phút</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50/80 backdrop-blur-sm">90 Phút</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-green-50/80 backdrop-blur-sm">120 Phút</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50/80 backdrop-blur-sm">Giá Khác / Cơ bản</th>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50/80 backdrop-blur-sm">Giá bán gốc</th>
+                                            <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-red-50/80 backdrop-blur-sm">Giảm</th>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Giá KM/Trial</th>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/80 backdrop-blur-sm">5 Tặng 5</th>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-pink-50/80 backdrop-blur-sm">10 Tặng 15</th>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 3 lần</th>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 5 lần</th>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 10 lần</th>
+                                            <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50/80 backdrop-blur-sm">Gói 20 lần</th>
+                                        </>
+                                    )}
                                     
                                     {/* Sticky Right Column Header */}
                                     <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 top-0 z-30 bg-[#FDF7F8] border-l border-gray-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]">Hành động</th>
@@ -165,29 +206,42 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                     Object.entries(groupedServices).map(([category, items]: [string, Service[]]) => (
                                         <React.Fragment key={category}>
                                             <tr className="bg-pink-50/50">
-                                                <td colSpan={11} className="py-2 px-4 font-bold text-[#D97A7D] text-sm uppercase tracking-wide sticky left-0 z-10 bg-pink-50">
+                                                <td colSpan={activeTab === 'spa' ? 7 : 11} className="py-2 px-2 md:px-4 font-bold text-[#D97A7D] text-sm uppercase tracking-wide sticky left-0 z-10 bg-pink-50">
                                                     {category}
                                                 </td>
                                             </tr>
                                             {items.map(service => (
                                                 <tr key={service.id} className="hover:bg-gray-50 transition-colors group">
-                                                    {/* Sticky Left Column Cell */}
-                                                    <td className="py-4 px-4 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100 min-w-[200px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                                                        <p className="font-medium text-gray-900 whitespace-normal text-sm">{service.name}</p>
-                                                        <p className="text-xs text-gray-500 whitespace-normal line-clamp-1">{service.description}</p>
-                                                        {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate">📝 {service.consultationNote}</p>}
+                                                    {/* Sticky Left Column Cell: Reduced width and padding */}
+                                                    <td className="py-3 px-2 md:px-4 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100 min-w-[100px] max-w-[100px] md:min-w-[130px] md:max-w-[130px] lg:min-w-[250px] lg:max-w-[250px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                                        <p className="font-medium text-gray-900 whitespace-normal text-xs md:text-sm leading-snug break-words">{service.name}</p>
+                                                        {/* Description hidden on screens smaller than lg to save width */}
+                                                        <p className="text-[10px] text-gray-500 whitespace-normal line-clamp-2 mt-1 hidden lg:block">{service.description}</p>
+                                                        {service.consultationNote && <p className="text-[10px] text-blue-500 mt-1 truncate hidden lg:block">📝 {service.consultationNote}</p>}
                                                     </td>
                                                     
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-yellow-50/20 font-medium">{formatCurrency(service.priceOriginal || 0)}</td>
-                                                    <td className="py-4 px-4 text-sm text-red-500 font-bold text-center bg-red-50/10">{service.discountPercent ? `${service.discountPercent}%` : '-'}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo || 0)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage5 || 0)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage15 || 0)}</td>
-                                                    
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage3 || 0)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage5Sessions || 0)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage10 || 0)}</td>
-                                                    <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage20 || 0)}</td>
+                                                    {activeTab === 'spa' ? (
+                                                        <>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-center">{formatCurrency(service.price30)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-center">{formatCurrency(service.price60)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-center">{formatCurrency(service.price90)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-center">{formatCurrency(service.price120)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-500 text-center bg-yellow-50/20">{service.priceOriginal > 0 ? formatCurrency(service.priceOriginal) : '-'}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right bg-yellow-50/20 font-medium">{formatCurrency(service.priceOriginal || 0)}</td>
+                                                            <td className="py-4 px-4 text-sm text-red-500 font-bold text-center bg-red-50/10">{service.discountPercent ? `${service.discountPercent}%` : '-'}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right">{formatCurrency(service.pricePromo || 0)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage5 || 0)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right bg-pink-50/10">{formatCurrency(service.pricePackage15 || 0)}</td>
+                                                            
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage3 || 0)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage5Sessions || 0)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage10 || 0)}</td>
+                                                            <td className="py-4 px-4 text-sm text-gray-700 text-right bg-blue-50/10">{formatCurrency(service.pricePackage20 || 0)}</td>
+                                                        </>
+                                                    )}
                                                     
                                                     {/* Sticky Right Column Cell */}
                                                     <td className="py-4 px-4 text-center sticky right-0 bg-white group-hover:bg-gray-50 z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] border-l border-gray-100">
@@ -202,7 +256,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={11} className="text-center py-8 text-gray-400">Chưa có dữ liệu cho mục này.</td>
+                                        <td colSpan={activeTab === 'spa' ? 7 : 11} className="text-center py-8 text-gray-400">Chưa có dữ liệu cho mục này.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -211,11 +265,11 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                 </div>
             </div>
             
-            {/* Form Thêm Mới - Giữ nguyên phần này */}
+            {/* Form Thêm Mới */}
             <div className="bg-white p-6 rounded-lg shadow-md border border-pink-100 relative">
                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-serif font-bold text-[#D97A7D]">
-                        Thêm Mới ({activeTab === 'single' ? 'Gói Lẻ' : 'Gói Combo'})
+                        Thêm Mới ({activeTab === 'single' ? 'Gói Lẻ' : activeTab === 'combo' ? 'Gói Combo' : 'Spa & Massage'})
                     </h3>
                     
                     <button 
@@ -253,46 +307,75 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                             ))}
                         </datalist>
                     </div>
+                    
+                    {activeTab !== 'spa' && (
+                        <>
+                             <div className="lg:col-span-2">
+                                <label className="block text-xs font-medium text-gray-700 bg-yellow-50 w-fit px-1 rounded">Giá bán gốc</label>
+                                <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">% Giảm</label>
+                                <input type="number" value={newService.discountPercent || ''} onChange={e => handleNewServiceChange('discountPercent', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm text-red-500 font-bold" placeholder="0"/>
+                            </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-700">Giá KM/Trial</label>
+                                <input type="number" value={newService.pricePromo || ''} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            
+                             <div>
+                                <label className="block text-xs font-medium text-gray-700">5 Tặng 5</label>
+                                <input type="number" value={newService.pricePackage5 || ''} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-700">10 Tặng 15</label>
+                                <input type="number" value={newService.pricePackage15 || ''} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            
+                            {/* New Package Inputs */}
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Gói 3 lần</label>
+                                <input type="number" value={newService.pricePackage3 || ''} onChange={e => handleNewServiceChange('pricePackage3', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Gói 5 lần</label>
+                                <input type="number" value={newService.pricePackage5Sessions || ''} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Gói 10 lần</label>
+                                <input type="number" value={newService.pricePackage10 || ''} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Gói 20 lần</label>
+                                <input type="number" value={newService.pricePackage20 || ''} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                        </>
+                    )}
 
-                     <div className="lg:col-span-2">
-                        <label className="block text-xs font-medium text-gray-700 bg-yellow-50 w-fit px-1 rounded">Giá bán gốc</label>
-                        <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30" required/>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-700">% Giảm</label>
-                        <input type="number" value={newService.discountPercent || ''} onChange={e => handleNewServiceChange('discountPercent', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm text-red-500 font-bold" placeholder="0"/>
-                    </div>
-                     <div>
-                        <label className="block text-xs font-medium text-gray-700">Giá KM/Trial</label>
-                        <input type="number" value={newService.pricePromo || ''} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                    </div>
-                    
-                     <div>
-                        <label className="block text-xs font-medium text-gray-700">5 Tặng 5</label>
-                        <input type="number" value={newService.pricePackage5 || ''} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                    </div>
-                     <div>
-                        <label className="block text-xs font-medium text-gray-700">10 Tặng 15</label>
-                        <input type="number" value={newService.pricePackage15 || ''} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                    </div>
-                    
-                    {/* New Package Inputs */}
-                    <div>
-                        <label className="block text-xs font-medium text-gray-700">Gói 3 lần</label>
-                        <input type="number" value={newService.pricePackage3 || ''} onChange={e => handleNewServiceChange('pricePackage3', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-700">Gói 5 lần</label>
-                        <input type="number" value={newService.pricePackage5Sessions || ''} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-700">Gói 10 lần</label>
-                        <input type="number" value={newService.pricePackage10 || ''} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-700">Gói 20 lần</label>
-                        <input type="number" value={newService.pricePackage20 || ''} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                    </div>
+                    {activeTab === 'spa' && (
+                        <>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-700">Giá 30 phút</label>
+                                <input type="number" value={newService.price30 || ''} onChange={e => handleNewServiceChange('price30', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Giá 60 phút</label>
+                                <input type="number" value={newService.price60 || ''} onChange={e => handleNewServiceChange('price60', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Giá 90 phút</label>
+                                <input type="number" value={newService.price90 || ''} onChange={e => handleNewServiceChange('price90', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Giá 120 phút</label>
+                                <input type="number" value={newService.price120 || ''} onChange={e => handleNewServiceChange('price120', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-700">Giá Khác / Cơ bản</label>
+                                <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30"/>
+                            </div>
+                        </>
+                    )}
 
                     <div className="md:col-span-2 lg:col-span-4">
                          <label className="block text-xs font-medium text-gray-700">Mô tả</label>

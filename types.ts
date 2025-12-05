@@ -14,7 +14,7 @@ export interface User {
   password?: string;
 }
 
-export type ServiceType = 'single' | 'combo';
+export type ServiceType = 'single' | 'combo' | 'spa';
 
 export interface Service {
   id: string;
@@ -34,6 +34,12 @@ export interface Service {
   pricePackage5Sessions: number;
   pricePackage10: number;
   pricePackage20: number;
+
+  // SPA Specific Pricing (in VND)
+  price30?: number;
+  price60?: number;
+  price90?: number;
+  price120?: number;
 }
 
 export enum PromotionStatus {

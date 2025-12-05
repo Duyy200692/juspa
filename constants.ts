@@ -76,6 +76,68 @@ export const SERVICES: Service[] = [
   createService('service-old-5', 'Oxy Boots', 'Chăm sóc da', 'Công nghệ bơm oxy áp lực cao', 1800000, 11),
 ];
 
+// NEW: Data Digitized from Menu Images
+export const SPA_SERVICES_DATA: Partial<Service>[] = [
+    // NAILS
+    { name: 'Sơn Gel Cơ Bản', category: 'Nails', type: 'single', priceOriginal: 220000 },
+    { name: 'Sơn Gel Hàn Cao Cấp', category: 'Nails', type: 'single', priceOriginal: 320000 },
+    { name: 'Úp Móng Gel', category: 'Nails', type: 'single', priceOriginal: 250000 },
+    { name: 'Thiết Kế Theo Yêu Cầu', category: 'Nails', type: 'single', priceOriginal: 15000, description: 'Giá từ 15k' },
+    
+    // LÔNG MI & MÀY
+    { name: 'Nối Mi Tự Nhiên Classic', category: 'Lông Mi & Mày', type: 'single', priceOriginal: 400000 },
+    { name: 'Nối Mi Volume', category: 'Lông Mi & Mày', type: 'single', priceOriginal: 650000 },
+    { name: 'Uốn & Nhuộm Mi', category: 'Lông Mi & Mày', type: 'single', priceOriginal: 420000 },
+    { name: 'Định Hình Chân Mày', category: 'Lông Mi & Mày', type: 'single', priceOriginal: 500000 },
+
+    // MẸ & BÉ
+    { name: 'Massage Mẹ Bầu', category: 'Mẹ & Bé', type: 'spa', price60: 760000, price90: 1100000 },
+    { name: 'Massage Cho Bé', category: 'Mẹ & Bé', type: 'spa', price30: 250000, price60: 400000 },
+    { name: 'Gội Đầu Cho Bé', category: 'Mẹ & Bé', type: 'spa', priceOriginal: 150000 },
+    { name: 'Chăm Sóc Móng Cho Bé', category: 'Mẹ & Bé', type: 'spa', priceOriginal: 100000 },
+
+    // CHĂM SÓC CƠ THỂ
+    { name: 'Tắm Tẩy Tế Bào Chết Dịu Nhẹ', category: 'Chăm Sóc Cơ Thể', type: 'spa', price30: 480000 },
+    { name: 'Tắm Dưỡng Mịn Da', category: 'Chăm Sóc Cơ Thể', type: 'spa', price60: 1600000 },
+    { name: 'Tắm Dưỡng Sáng Da', category: 'Chăm Sóc Cơ Thể', type: 'spa', price60: 2500000 },
+
+    // CHĂM SÓC TÓC
+    { name: 'Gội Thư Giãn (45p)', category: 'Chăm Sóc Tóc', type: 'spa', priceOriginal: 250000 },
+    { name: 'Gội Thảo Mộc Cao Cấp', category: 'Chăm Sóc Tóc', type: 'spa', price60: 600000, priceOriginal: 1080000, description: 'Giá 1080k cho 75 phút' },
+    { name: 'Detox Da Đầu/Trị Gàu', category: 'Chăm Sóc Tóc', type: 'spa', price60: 500000 },
+    { name: 'Tăng Sinh Mầm Tóc & Phục Hồi', category: 'Chăm Sóc Tóc', type: 'spa', price60: 600000 },
+
+    // CHĂM SÓC DA MẶT
+    { name: 'Dưỡng Da Cấp Ẩm Nhanh', category: 'Chăm Sóc Da Mặt', type: 'spa', price30: 380000 },
+    { name: 'Phục Hồi Thải Độc Da', category: 'Chăm Sóc Da Mặt', type: 'spa', price60: 900000 },
+    { name: 'Rạng Rỡ Xuân Thì', category: 'Chăm Sóc Da Mặt', type: 'spa', price60: 1200000 },
+    { name: 'Sạch Mụn Mờ Thâm', category: 'Chăm Sóc Da Mặt', type: 'spa', price90: 1500000 },
+    { name: 'Liệu Pháp Oxygen', category: 'Chăm Sóc Da Mặt', type: 'spa', price90: 1800000 },
+    { name: 'Thanh Xuân Còn Mãi', category: 'Chăm Sóc Da Mặt', type: 'spa', price90: 2000000 },
+    { name: 'Da Pha Lê', category: 'Chăm Sóc Da Mặt', type: 'spa', price90: 2500000 },
+    { name: 'Liệu Pháp Bọt Oxy Nội Sinh Geneox Pro', category: 'Chăm Sóc Da Mặt', type: 'spa', price60: 3500000 },
+    { name: 'RF Trẻ Hoá Và Săn Chắc Da Mặt', category: 'Chăm Sóc Da Mặt', type: 'spa', price60: 3900000 },
+    { name: 'Hydrafacial Syndeo', category: 'Chăm Sóc Da Mặt', type: 'spa', price60: 4600000 },
+
+    // MASSAGE
+    { name: 'Liệu Pháp Tinh Dầu Aroma', category: 'Massage', type: 'spa', price60: 500000, price90: 710000, price120: 880000 },
+    { name: 'Massage Thảo Mộc', category: 'Massage', type: 'spa', price60: 500000, price90: 710000, price120: 880000 },
+    { name: 'Ju Signature', category: 'Massage', type: 'spa', price60: 550000, price90: 760000, price120: 980000 },
+    { name: 'Massage Đá Nóng', category: 'Massage', type: 'spa', price60: 600000, price90: 850000, price120: 1080000 },
+    { name: 'Thai/Shiatsu', category: 'Massage', type: 'spa', price60: 650000, price90: 920000, price120: 1200000 },
+    { name: 'Chuyên Sâu Cổ-Vai-Gáy', category: 'Massage', type: 'spa', price30: 380000, price60: 600000, price90: 800000, price120: 1000000 },
+    { name: 'Cân Bằng Hệ Bạch Huyết', category: 'Massage', type: 'spa', price60: 760000, price90: 1100000, price120: 1400000 },
+    { name: 'Massage Đôi', category: 'Massage', type: 'spa', price60: 950000, price90: 1400000, price120: 1800000 },
+
+    // CHĂM SÓC CHÂN
+    { name: 'Gót Hồng', category: 'Chăm Sóc Chân', type: 'spa', price30: 300000 },
+    { name: 'Tẩy Tế Bào Chết Cho Chân', category: 'Chăm Sóc Chân', type: 'spa', price30: 350000 },
+    { name: 'Massage Ấn Huyệt', category: 'Chăm Sóc Chân', type: 'spa', price30: 280000, price60: 450000, price90: 600000, price120: 800000 },
+    { name: 'Foot Pamper (45p)', category: 'Chăm Sóc Chân', type: 'spa', priceOriginal: 530000 },
+    { name: 'Combo Pedicure (75p)', category: 'Chăm Sóc Chân', type: 'spa', priceOriginal: 620000 },
+    { name: 'Total Foot Care (105p)', category: 'Chăm Sóc Chân', type: 'spa', priceOriginal: 750000 },
+];
+
 export const PROMOTIONS: Promotion[] = [
   {
     id: 'promo-1',

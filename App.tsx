@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Import directly from firebase SDK for real connection
-import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, getDocs, writeBatch, query, addDoc, where } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 import Header from './components/Header';
@@ -12,7 +12,7 @@ import LandingPage from './components/LandingPage';
 import InventoryManagement from './components/InventoryManagement';
 import { User, Promotion, Service, Role, InventoryItem, InventoryTransaction, AuditSession, AuditItem } from './types';
 // FIX: Ensure DEFAULT_PROMOTIONS is used
-import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS, INVENTORY_ITEMS as DEFAULT_INVENTORY } from './constants';
+import { USERS as DEFAULT_USERS, SERVICES as DEFAULT_SERVICES, PROMOTIONS as DEFAULT_PROMOTIONS, INVENTORY_ITEMS as DEFAULT_INVENTORY, SPA_SERVICES_DATA } from './constants';
 
 type View = 'dashboard' | 'services' | 'users' | 'inventory';
 
@@ -32,6 +32,65 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loginError, setLoginError] = useState<string>('');
   
+  // Helper for batch seeding Spa Services
+  const seedSpaServicesBatch = async () => {
+      console.log("Starting Spa Services Seed...");
+      try {
+          // 1. Get existing services to avoid duplicates
+          const servicesSnap = await getDocs(collection(db, 'services'));
+          const existingNames = new Set(servicesSnap.docs.map(doc => doc.data().name));
+          
+          const batch = writeBatch(db);
+          let count = 0;
+
+          SPA_SERVICES_DATA.forEach(service => {
+             if (!existingNames.has(service.name)) {
+                 const newId = `service-spa-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                 const docRef = doc(db, 'services', newId);
+                 
+                 // Construct full Service object with defaults
+                 const fullService = {
+                    id: newId,
+                    name: service.name || 'Unnamed',
+                    description: service.description || '',
+                    category: service.category || 'Spa',
+                    type: 'spa', // Force type
+                    consultationNote: service.consultationNote || '',
+                    priceOriginal: service.priceOriginal || 0,
+                    discountPercent: 0,
+                    pricePromo: 0,
+                    pricePackage5: 0,
+                    pricePackage15: 0,
+                    pricePackage3: 0,
+                    pricePackage5Sessions: 0,
+                    pricePackage10: 0,
+                    pricePackage20: 0,
+                    
+                    // Spa Pricing
+                    price30: service.price30 || 0,
+                    price60: service.price60 || 0,
+                    price90: service.price90 || 0,
+                    price120: service.price120 || 0,
+                 };
+                 
+                 batch.set(docRef, fullService);
+                 count++;
+             }
+          });
+
+          if (count > 0) {
+              await batch.commit();
+              console.log(`Successfully seeded ${count} new Spa services.`);
+          } else {
+              console.log("All Spa services already exist. Skipping seed.");
+          }
+          return count;
+      } catch (error) {
+          console.error("Error seeding Spa services:", error);
+          throw error;
+      }
+  };
+
   // --- Firebase Real-time Listener ---
   useEffect(() => {
     const seedInitialData = async () => {
@@ -49,7 +108,7 @@ const App: React.FC = () => {
                 await batch.commit();
             }
 
-            // 2. Check & Seed Services
+            // 2. Check & Seed Services (Generic)
             const servicesSnap = await getDocs(collection(db, 'services'));
             if (servicesSnap.empty) {
                 console.log("Seeding services...");
@@ -59,6 +118,14 @@ const App: React.FC = () => {
                     batch.set(docRef, service);
                 });
                 await batch.commit();
+            }
+
+            // 2b. Check & Seed Spa Services (Specific Check)
+            // Even if services exist, we check if 'spa' type exists. If not, we try to seed.
+            const spaQuery = query(collection(db, 'services'), where('type', '==', 'spa'));
+            const spaSnap = await getDocs(spaQuery);
+            if (spaSnap.empty) {
+                await seedSpaServicesBatch();
             }
 
              // 3. Check & Seed Promotions (FIX: Using DEFAULT_PROMOTIONS here to avoid TS6133)
@@ -245,6 +312,15 @@ const App: React.FC = () => {
   const deleteService = async (serviceId: string) => {
     await deleteDoc(doc(db, 'services', serviceId));
   }
+  
+  const handleForceSeedSpa = async () => {
+      try {
+          const count = await seedSpaServicesBatch();
+          alert(`Đã nạp thành công ${count} dịch vụ Spa mới!`);
+      } catch (e) {
+          alert("Lỗi khi nạp dữ liệu Spa: " + e);
+      }
+  };
 
   // --- Inventory Actions ---
   const importInventoryItem = async (itemId: string, quantity: number, notes?: string, expiryDate?: string) => {
@@ -511,6 +587,7 @@ const App: React.FC = () => {
             onAddService={addService}
             onUpdateService={updateService}
             onDeleteService={deleteService}
+            onSeedSpaServices={handleForceSeedSpa}
           />
         )}
 

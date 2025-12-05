@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { User, Service, Promotion, PromotionStatus, Role } from '../types';
 import Button from './shared/Button';
@@ -116,7 +117,6 @@ const Dashboard: React.FC<DashboardProps> = ({
               canEdit={loggedInUser.role === Role.Management}
               onEdit={() => handleOpenEditForm(promo)}
               onView={() => setSelectedProposal(promo)}
-              // FIX: Pass onDelete prop only if Management
               onDelete={loggedInUser.role === Role.Management ? () => handleDelete(promo.id, promo.name) : undefined}
             />
           ))}
@@ -130,29 +130,33 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Proposals Section */}
       <section>
-        <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 gap-4">
-            <div className="w-full md:w-auto">
-                <h2 className="text-3xl font-serif font-bold text-[#D97A7D] mb-1">Promotion Proposals History</h2>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+            <div className="w-full lg:w-auto">
+                <h2 className="text-2xl md:text-3xl font-serif font-bold text-[#D97A7D] mb-1">Promotion Proposals History</h2>
                 <p className="text-xs text-gray-500">Danh sách tất cả các đề xuất khuyến mãi</p>
             </div>
             
-            <div className="flex items-center gap-2 w-full md:w-auto">
-               <div className="flex items-center gap-2 bg-white p-1 rounded border border-gray-200 mr-2 shadow-sm">
-                    <span className="text-xs text-[#D97A7D] font-bold pl-2 flex gap-1"><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg> Lọc theo thời gian:</span>
-                    <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="text-xs border-none focus:ring-0 text-gray-600 bg-transparent cursor-pointer hover:text-[#D97A7D]">
-                        <option value="all">Tất cả các tháng</option>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+               <div className="flex items-center gap-2 bg-white p-1.5 rounded border border-gray-200 shadow-sm overflow-x-auto min-w-0">
+                    <span className="text-xs text-[#D97A7D] font-bold pl-1 flex gap-1 whitespace-nowrap items-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg> 
+                        <span className="hidden sm:inline">Lọc theo thời gian:</span>
+                        <span className="sm:hidden">Lọc:</span>
+                    </span>
+                    <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="text-xs border-none focus:ring-0 text-gray-600 bg-transparent cursor-pointer hover:text-[#D97A7D] pr-6">
+                        <option value="all">Tất cả tháng</option>
                         {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>Tháng {i+1}</option>)}
                     </select>
-                    <div className="w-px h-4 bg-gray-300"></div>
-                    <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="text-xs border-none focus:ring-0 text-gray-600 bg-transparent cursor-pointer hover:text-[#D97A7D]">
-                         <option value="all">Tất cả các năm</option>
+                    <div className="w-px h-4 bg-gray-300 shrink-0"></div>
+                    <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="text-xs border-none focus:ring-0 text-gray-600 bg-transparent cursor-pointer hover:text-[#D97A7D] pr-6">
+                         <option value="all">Tất cả năm</option>
                          {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
                </div>
 
                {(loggedInUser.role === Role.Product || loggedInUser.role === Role.Management) && (
-                <Button onClick={() => { setIsProposalFormOpen(true); setPromotionToEdit(null); }}>
-                    + Propose New Promotion
+                <Button onClick={() => { setIsProposalFormOpen(true); setPromotionToEdit(null); }} className="whitespace-nowrap flex-shrink-0">
+                    + <span className="hidden sm:inline">Propose </span>New Promotion
                 </Button>
                )}
             </div>
@@ -176,7 +180,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     const isManagement = loggedInUser.role === Role.Management;
                     
                     const canEdit = isManagement || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
-                    // FIX: Simplified Delete Logic: Management OR (Product & Owner & Pending)
                     const canDelete = isManagement || (loggedInUser.role === Role.Product && isOwner && promo.status === PromotionStatus.PendingDesign);
                     
                     const startDate = new Date(promo.startDate);
