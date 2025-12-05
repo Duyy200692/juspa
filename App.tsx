@@ -127,7 +127,11 @@ const App: React.FC = () => {
             const spaSnap = await getDocs(spaQuery);
             if (spaSnap.size < 10) {
                 console.log("Spa services seem incomplete (count < 10). Attempting to seed defaults...");
-                await seedSpaServicesBatch();
+                const count = await seedSpaServicesBatch();
+                if (count > 0) {
+                    // Alert user so they know data has been added
+                    alert(`Đã tự động cập nhật ${count} dịch vụ Spa mới vào hệ thống! Vui lòng kiểm tra tab "Spa & Massage".`);
+                }
             }
 
              // 3. Check & Seed Promotions (FIX: Using DEFAULT_PROMOTIONS here to avoid TS6133)
