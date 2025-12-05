@@ -1,3 +1,4 @@
+
 export enum Role {
   Product = 'Product',
   Marketing = 'Marketing',
@@ -53,6 +54,7 @@ export interface PromotionService extends Service {
   discountPrice: number;
   fullPrice: number;
   isCombo?: boolean;
+  selectedDuration?: '30' | '60' | '90' | '120' | 'other'; // New field for Spa duration
 }
 
 export interface Promotion {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PromotionService } from '../types';
 import Button from './shared/Button';
@@ -97,7 +98,7 @@ const PromotionCard: React.FC<PromotionCardProps> = ({ title, subtitle, startDat
                 {/* Service Name Section - Bigger on Tablet */}
                 <div className="w-full lg:w-5/12 mb-2 lg:mb-0 pr-2">
                   <p className="font-bold text-lg md:text-xl lg:text-sm text-[#5C3A3A] flex items-center flex-wrap gap-2">
-                      {service.name}
+                      {service.name} {service.selectedDuration ? `(${service.selectedDuration}')` : ''}
                       {service.isCombo && <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded border border-purple-200 shrink-0">COMBO</span>}
                   </p>
                   <p className="text-sm text-gray-500 line-clamp-2 mt-0.5">{service.description}</p>

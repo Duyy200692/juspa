@@ -38,7 +38,6 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push(s);
     });
-    // FIX: Cast return type to avoid 'unknown' type on items in the render loop
     return Object.fromEntries(
         Object.entries(groups).sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
     ) as Record<string, Service[]>;
@@ -54,7 +53,7 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
   const generateDefaultSteps = (servicesList: PromotionService[]) => {
     return servicesList
       .filter(s => s.consultationNote)
-      .map(s => `• ${s.name}:\n${s.consultationNote}`)
+      .map(s => `• ${s.name}${s.selectedDuration ? ` (${s.selectedDuration}')` : ''}:\n${s.consultationNote}`)
       .join('\n\n');
   };
 
@@ -96,10 +95,23 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
     if (isSelected) {
       setSelectedServices(prev => prev.filter(s => s.id !== service.id));
     } else {
+      let initialPrice = Number(service.priceOriginal) || 0;
+      let initialDuration: '30' | '60' | '90' | '120' | 'other' | undefined = undefined;
+
+      // Smart default for Spa services: prioritize 60 -> 90 -> 30 -> 120 -> Original
+      if (service.type === 'spa') {
+          if ((service.price60 || 0) > 0) { initialPrice = service.price60!; initialDuration = '60'; }
+          else if ((service.price90 || 0) > 0) { initialPrice = service.price90!; initialDuration = '90'; }
+          else if ((service.price30 || 0) > 0) { initialPrice = service.price30!; initialDuration = '30'; }
+          else if ((service.price120 || 0) > 0) { initialPrice = service.price120!; initialDuration = '120'; }
+          else { initialDuration = 'other'; }
+      }
+
       setSelectedServices(prev => [...prev, { 
           ...service, 
-          fullPrice: Number(service.priceOriginal) || 0, 
-          discountPrice: Number(service.priceOriginal) || 0 
+          fullPrice: initialPrice, 
+          discountPrice: initialPrice,
+          selectedDuration: initialDuration
       }]);
     }
   };
@@ -108,6 +120,30 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
       setSelectedServices(prev => prev.map(s => 
           s.id === id ? { ...s, [field]: value } : s
       ));
+  };
+
+  const handleDurationChange = (id: string, duration: '30' | '60' | '90' | '120' | 'other') => {
+      setSelectedServices(prev => prev.map(s => {
+          if (s.id !== id) return s;
+          
+          let newPrice = 0;
+          switch (duration) {
+              case '30': newPrice = Number(s.price30) || 0; break;
+              case '60': newPrice = Number(s.price60) || 0; break;
+              case '90': newPrice = Number(s.price90) || 0; break;
+              case '120': newPrice = Number(s.price120) || 0; break;
+              default: newPrice = Number(s.priceOriginal) || 0;
+          }
+
+          // Preserve discount percentage if possible, otherwise reset discountPrice to new fullPrice
+          // Simple logic: Reset discount price to full price when duration changes to avoid confusion
+          return {
+              ...s,
+              selectedDuration: duration,
+              fullPrice: newPrice,
+              discountPrice: newPrice 
+          };
+      }));
   };
 
   const handlePercentChange = (id: string, fullPrice: number, percentStr: string) => {
@@ -264,9 +300,35 @@ const ProposalForm: React.FC<ProposalFormProps> = ({ isOpen, onClose, services, 
                              {!service.isCombo && <input type="checkbox" checked={comboSelectionIds.includes(service.id)} onChange={() => handleComboSelectionToggle(service.id)} className="absolute top-2 left-2 h-5 w-5 rounded border-gray-400 text-[#E5989B] focus:ring-[#D97A7D] cursor-pointer" />}
                              <button onClick={() => handleRemoveSelectedService(service.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                                <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500">Tên dịch vụ / Combo {service.isCombo && <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-1 rounded">GÓI COMBO</span>}</label><input type="text" value={service.name} onChange={e => handleSelectedServiceChange(service.id, 'name', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5" /></div>
+                                <div className="md:col-span-2">
+                                    <label className="text-xs font-medium text-gray-500">Tên dịch vụ / Combo {service.isCombo && <span className="ml-2 text-xs bg-purple-100 text-purple-600 px-1 rounded">GÓI COMBO</span>}</label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="text" value={service.name} onChange={e => handleSelectedServiceChange(service.id, 'name', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5" />
+                                        {/* Spa Duration Selector */}
+                                        {service.type === 'spa' && !service.isCombo && (
+                                            <div className="flex items-center gap-1 mt-1 shrink-0">
+                                                {(['30', '60', '90', '120'] as const).map(min => {
+                                                    const priceKey = `price${min}` as keyof Service;
+                                                    const price = Number(service[priceKey]) || 0;
+                                                    if (price === 0) return null;
+                                                    return (
+                                                        <button 
+                                                            key={min}
+                                                            type="button"
+                                                            onClick={() => handleDurationChange(service.id, min)}
+                                                            className={`px-2 py-1 text-[10px] font-bold rounded border ${service.selectedDuration === min ? 'bg-[#E5989B] text-white border-[#E5989B]' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}`}
+                                                            title={`Giá: ${formatCurrency(price)}`}
+                                                        >
+                                                            {min}'
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                                 <div className="md:col-span-2"><label className="text-xs font-medium text-gray-500">Mô tả</label><textarea value={service.description} onChange={e => handleSelectedServiceChange(service.id, 'description', e.target.value)} rows={2} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5"></textarea></div>
-                                 <div><label className="text-xs font-medium text-gray-500">Giá gốc (niêm yết)</label><input type="number" value={service.fullPrice || ''} onChange={e => handleSelectedServiceChange(service.id, 'fullPrice', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 disabled:bg-gray-200" disabled={!service.id.startsWith('custom-') && !service.isCombo} /></div>
+                                 <div><label className="text-xs font-medium text-gray-500">Giá gốc {service.selectedDuration ? `(${service.selectedDuration}')` : ''} (niêm yết)</label><input type="number" value={service.fullPrice || ''} onChange={e => handleSelectedServiceChange(service.id, 'fullPrice', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 disabled:bg-gray-200" disabled={!service.id.startsWith('custom-') && !service.isCombo} /></div>
                                 <div className="flex gap-2">
                                     <div className="w-1/3 relative"><label className="text-xs font-medium text-gray-500">% Giảm</label><input type="number" placeholder="0" value={calculatedPercent > 0 ? calculatedPercent : ''} onChange={(e) => handlePercentChange(service.id, service.fullPrice, e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 pl-2 pr-6 text-center focus:ring-[#E5989B] focus:border-[#E5989B] text-gray-500" /><span className="absolute right-2 top-7 text-xs text-gray-500 pointer-events-none font-bold">%</span></div>
                                     <div className="w-2/3"><label className="text-xs font-medium text-gray-500">Giá khuyến mãi</label><input type="number" value={service.discountPrice || ''} onChange={e => handleSelectedServiceChange(service.id, 'discountPrice', e.target.value)} className="mt-1 block w-full text-sm border-gray-300 rounded-md shadow-sm p-1.5 bg-pink-50 font-bold text-[#D97A7D]" /></div>

@@ -47,7 +47,7 @@ const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose
   // Otherwise, fallback to generating from services (backward compatibility).
   const consultationSteps = proposal.consultationNote || proposal.services
     .filter(s => s.consultationNote)
-    .map(s => `• ${s.name}:\n${s.consultationNote}`)
+    .map(s => `• ${s.name}${s.selectedDuration ? ` (${s.selectedDuration}')` : ''}:\n${s.consultationNote}`)
     .join('\n\n');
 
   return (
@@ -60,7 +60,7 @@ const ProposalDetailView: React.FC<ProposalDetailViewProps> = ({ isOpen, onClose
             <ul className="list-disc pl-5 space-y-1">
                 {proposal.services.map(s => (
                     <li key={s.id}>
-                        {s.name}
+                        {s.name} {s.selectedDuration ? `(${s.selectedDuration}')` : ''}
                         {s.isCombo && <span className="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded">COMBO</span>}
                         : <span className="line-through">{s.fullPrice.toLocaleString()}</span> &rarr; <span className="font-bold text-[#E5989B]">{s.discountPrice.toLocaleString()}</span>
                     </li>
