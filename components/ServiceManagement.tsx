@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Service, ServiceType } from '../types';
+import { Service, ServiceType, User, Role } from '../types';
 import Button from './shared/Button';
 import EditServiceModal from './EditServiceModal';
 import CategoryManagerModal from './CategoryManagerModal';
@@ -10,6 +10,7 @@ interface ServiceManagementProps {
     onUpdateService: (service: Service) => void;
     onDeleteService: (serviceId: string) => void;
     onSeedSpaServices?: () => Promise<void>;
+    currentUser: User;
 }
 
 const formatCurrency = (value: number | undefined) => {
@@ -17,11 +18,14 @@ const formatCurrency = (value: number | undefined) => {
     return new Intl.NumberFormat('vi-VN').format(value);
 };
 
-const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddService, onUpdateService, onDeleteService, onSeedSpaServices }) => {
+const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddService, onUpdateService, onDeleteService, onSeedSpaServices, currentUser }) => {
     const [activeTab, setActiveTab] = useState<ServiceType>('single');
     const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null);
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     
+    // Permission Check: Only Management and Product teams can edit services
+    const canEdit = currentUser.role === Role.Management || currentUser.role === Role.Product;
+
     const [extraCategories, setExtraCategories] = useState<string[]>(() => {
         try {
             const saved = localStorage.getItem('extraCategories');
@@ -158,7 +162,7 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                     <TabButton type="spa" label="Spa & Massage" />
                 </div>
 
-                {activeTab === 'spa' && onSeedSpaServices && (
+                {activeTab === 'spa' && onSeedSpaServices && canEdit && (
                     <div className="mb-4 flex justify-end">
                         <Button onClick={handleSeedClick} className="text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 shadow-sm">
                             ⚡ Nạp Menu Spa Mẫu
@@ -245,10 +249,12 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
                                                     
                                                     {/* Sticky Right Column Cell */}
                                                     <td className="py-4 px-4 text-center sticky right-0 bg-white group-hover:bg-gray-50 z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] border-l border-gray-100">
-                                                         <div className="flex flex-col gap-1 items-center">
-                                                            <Button variant="secondary" onClick={() => setServiceToEdit(service)} className="text-[10px] py-1 px-2 w-full">Sửa</Button>
-                                                            <Button variant="danger" onClick={() => window.confirm(`Xóa dịch vụ ${service.name}?`) && onDeleteService(service.id)} className="text-[10px] py-1 px-2 w-full">Xóa</Button>
-                                                        </div>
+                                                        {canEdit && (
+                                                            <div className="flex flex-col gap-1 items-center">
+                                                                <Button variant="secondary" onClick={() => setServiceToEdit(service)} className="text-[10px] py-1 px-2 w-full">Sửa</Button>
+                                                                <Button variant="danger" onClick={() => window.confirm(`Xóa dịch vụ ${service.name}?`) && onDeleteService(service.id)} className="text-[10px] py-1 px-2 w-full">Xóa</Button>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}
@@ -266,130 +272,132 @@ const ServiceManagement: React.FC<ServiceManagementProps> = ({ services, onAddSe
             </div>
             
             {/* Form Thêm Mới */}
-            <div className="bg-white p-6 rounded-lg shadow-md border border-pink-100 relative">
-                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-serif font-bold text-[#D97A7D]">
-                        Thêm Mới ({activeTab === 'single' ? 'Gói Lẻ' : activeTab === 'combo' ? 'Gói Combo' : 'Spa & Massage'})
-                    </h3>
-                    
-                    <button 
-                        onClick={() => setIsCategoryModalOpen(true)}
-                        className="text-xs flex items-center gap-1 text-gray-500 hover:text-[#D97A7D] bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
-                        type="button"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Quản lý Danh mục
-                    </button>
-                 </div>
+            {canEdit && (
+                <div className="bg-white p-6 rounded-lg shadow-md border border-pink-100 relative">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-serif font-bold text-[#D97A7D]">
+                            Thêm Mới ({activeTab === 'single' ? 'Gói Lẻ' : activeTab === 'combo' ? 'Gói Combo' : 'Spa & Massage'})
+                        </h3>
+                        
+                        <button 
+                            onClick={() => setIsCategoryModalOpen(true)}
+                            className="text-xs flex items-center gap-1 text-gray-500 hover:text-[#D97A7D] bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
+                            type="button"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Quản lý Danh mục
+                        </button>
+                    </div>
 
-                 <form onSubmit={handleAddNewService} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
-                    <div className="lg:col-span-2">
-                        <label className="block text-xs font-medium text-gray-700">Tên Dịch vụ</label>
-                        <input type="text" value={newService.name} onChange={e => handleNewServiceChange('name', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" required placeholder="Nhập tên..."/>
-                    </div>
-                    
-                    <div className="lg:col-span-2">
-                        <label className="block text-xs font-medium text-gray-700">Danh mục (Category)</label>
-                        <input 
-                            type="text" 
-                            list="categories-list"
-                            value={newService.category || ''} 
-                            onChange={e => handleNewServiceChange('category', e.target.value)} 
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" 
-                            placeholder="VD: RF, Hydrafacial..."
-                        />
-                        <datalist id="categories-list">
-                            {existingCategories.map((cat, idx) => (
-                                <option key={idx} value={cat} />
-                            ))}
-                        </datalist>
-                    </div>
-                    
-                    {activeTab !== 'spa' && (
-                        <>
-                             <div className="lg:col-span-2">
-                                <label className="block text-xs font-medium text-gray-700 bg-yellow-50 w-fit px-1 rounded">Giá bán gốc</label>
-                                <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">% Giảm</label>
-                                <input type="number" value={newService.discountPercent || ''} onChange={e => handleNewServiceChange('discountPercent', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm text-red-500 font-bold" placeholder="0"/>
-                            </div>
-                             <div>
-                                <label className="block text-xs font-medium text-gray-700">Giá KM/Trial</label>
-                                <input type="number" value={newService.pricePromo || ''} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            
-                             <div>
-                                <label className="block text-xs font-medium text-gray-700">5 Tặng 5</label>
-                                <input type="number" value={newService.pricePackage5 || ''} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                             <div>
-                                <label className="block text-xs font-medium text-gray-700">10 Tặng 15</label>
-                                <input type="number" value={newService.pricePackage15 || ''} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            
-                            {/* New Package Inputs */}
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Gói 3 lần</label>
-                                <input type="number" value={newService.pricePackage3 || ''} onChange={e => handleNewServiceChange('pricePackage3', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Gói 5 lần</label>
-                                <input type="number" value={newService.pricePackage5Sessions || ''} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Gói 10 lần</label>
-                                <input type="number" value={newService.pricePackage10 || ''} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Gói 20 lần</label>
-                                <input type="number" value={newService.pricePackage20 || ''} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                        </>
-                    )}
+                    <form onSubmit={handleAddNewService} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                        <div className="lg:col-span-2">
+                            <label className="block text-xs font-medium text-gray-700">Tên Dịch vụ</label>
+                            <input type="text" value={newService.name} onChange={e => handleNewServiceChange('name', e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" required placeholder="Nhập tên..."/>
+                        </div>
+                        
+                        <div className="lg:col-span-2">
+                            <label className="block text-xs font-medium text-gray-700">Danh mục (Category)</label>
+                            <input 
+                                type="text" 
+                                list="categories-list"
+                                value={newService.category || ''} 
+                                onChange={e => handleNewServiceChange('category', e.target.value)} 
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" 
+                                placeholder="VD: RF, Hydrafacial..."
+                            />
+                            <datalist id="categories-list">
+                                {existingCategories.map((cat, idx) => (
+                                    <option key={idx} value={cat} />
+                                ))}
+                            </datalist>
+                        </div>
+                        
+                        {activeTab !== 'spa' && (
+                            <>
+                                <div className="lg:col-span-2">
+                                    <label className="block text-xs font-medium text-gray-700 bg-yellow-50 w-fit px-1 rounded">Giá bán gốc</label>
+                                    <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">% Giảm</label>
+                                    <input type="number" value={newService.discountPercent || ''} onChange={e => handleNewServiceChange('discountPercent', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm text-red-500 font-bold" placeholder="0"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Giá KM/Trial</label>
+                                    <input type="number" value={newService.pricePromo || ''} onChange={e => handleNewServiceChange('pricePromo', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">5 Tặng 5</label>
+                                    <input type="number" value={newService.pricePackage5 || ''} onChange={e => handleNewServiceChange('pricePackage5', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">10 Tặng 15</label>
+                                    <input type="number" value={newService.pricePackage15 || ''} onChange={e => handleNewServiceChange('pricePackage15', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                
+                                {/* New Package Inputs */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Gói 3 lần</label>
+                                    <input type="number" value={newService.pricePackage3 || ''} onChange={e => handleNewServiceChange('pricePackage3', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Gói 5 lần</label>
+                                    <input type="number" value={newService.pricePackage5Sessions || ''} onChange={e => handleNewServiceChange('pricePackage5Sessions', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Gói 10 lần</label>
+                                    <input type="number" value={newService.pricePackage10 || ''} onChange={e => handleNewServiceChange('pricePackage10', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Gói 20 lần</label>
+                                    <input type="number" value={newService.pricePackage20 || ''} onChange={e => handleNewServiceChange('pricePackage20', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                            </>
+                        )}
 
-                    {activeTab === 'spa' && (
-                        <>
-                             <div>
-                                <label className="block text-xs font-medium text-gray-700">Giá 30 phút</label>
-                                <input type="number" value={newService.price30 || ''} onChange={e => handleNewServiceChange('price30', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Giá 60 phút</label>
-                                <input type="number" value={newService.price60 || ''} onChange={e => handleNewServiceChange('price60', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Giá 90 phút</label>
-                                <input type="number" value={newService.price90 || ''} onChange={e => handleNewServiceChange('price90', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Giá 120 phút</label>
-                                <input type="number" value={newService.price120 || ''} onChange={e => handleNewServiceChange('price120', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-700">Giá Khác / Cơ bản</label>
-                                <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30"/>
-                            </div>
-                        </>
-                    )}
+                        {activeTab === 'spa' && (
+                            <>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Giá 30 phút</label>
+                                    <input type="number" value={newService.price30 || ''} onChange={e => handleNewServiceChange('price30', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Giá 60 phút</label>
+                                    <input type="number" value={newService.price60 || ''} onChange={e => handleNewServiceChange('price60', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Giá 90 phút</label>
+                                    <input type="number" value={newService.price90 || ''} onChange={e => handleNewServiceChange('price90', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Giá 120 phút</label>
+                                    <input type="number" value={newService.price120 || ''} onChange={e => handleNewServiceChange('price120', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm"/>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-700">Giá Khác / Cơ bản</label>
+                                    <input type="number" value={newService.priceOriginal || ''} onChange={e => handleNewServiceChange('priceOriginal', Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm bg-yellow-50/30"/>
+                                </div>
+                            </>
+                        )}
 
-                    <div className="md:col-span-2 lg:col-span-4">
-                         <label className="block text-xs font-medium text-gray-700">Mô tả</label>
-                         <textarea value={newService.description} onChange={e => handleNewServiceChange('description', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="Mô tả ngắn..."></textarea>
-                    </div>
-                     <div className="md:col-span-2 lg:col-span-2">
-                         <label className="block text-xs font-medium text-gray-700">Quy trình (Dành cho Lễ tân/MKT)</label>
-                         <textarea value={newService.consultationNote || ''} onChange={e => handleNewServiceChange('consultationNote', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="VD: Bước 1 tẩy trang..."></textarea>
-                    </div>
-                    <div className="lg:col-span-6 flex justify-end">
-                        <Button type="submit" className="w-full sm:w-auto px-8 py-3 text-sm">Thêm Mới Dịch Vụ</Button>
-                    </div>
-                 </form>
-            </div>
+                        <div className="md:col-span-2 lg:col-span-4">
+                            <label className="block text-xs font-medium text-gray-700">Mô tả</label>
+                            <textarea value={newService.description} onChange={e => handleNewServiceChange('description', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="Mô tả ngắn..."></textarea>
+                        </div>
+                        <div className="md:col-span-2 lg:col-span-2">
+                            <label className="block text-xs font-medium text-gray-700">Quy trình (Dành cho Lễ tân/MKT)</label>
+                            <textarea value={newService.consultationNote || ''} onChange={e => handleNewServiceChange('consultationNote', e.target.value)} rows={2} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" placeholder="VD: Bước 1 tẩy trang..."></textarea>
+                        </div>
+                        <div className="lg:col-span-6 flex justify-end">
+                            <Button type="submit" className="w-full sm:w-auto px-8 py-3 text-sm">Thêm Mới Dịch Vụ</Button>
+                        </div>
+                    </form>
+                </div>
+            )}
             
             <EditServiceModal
                 isOpen={!!serviceToEdit}

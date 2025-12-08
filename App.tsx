@@ -603,6 +603,7 @@ const App: React.FC = () => {
             onUpdateService={updateService}
             onDeleteService={deleteService}
             onSeedSpaServices={handleForceSeedSpa}
+            currentUser={loggedInUser}
           />
         )}
 
