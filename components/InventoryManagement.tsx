@@ -21,6 +21,28 @@ interface InventoryManagementProps {
   onDeleteAudit?: (auditId: string) => Promise<void>;
 }
 
+// Utility to remove Vietnamese accents for search
+const removeVietnameseTones = (str: string) => {
+    str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+    str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+    str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+    str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+    str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+    str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+    str = str.replace(/đ/g, "d");
+    str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+    str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+    str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+    str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+    str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+    str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+    str = str.replace(/Đ/g, "D");
+    // Some system encode vietnamese combining accent as individual utf-8 characters
+    // \u0300 to \u036f
+    str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return str.replace(/ + /g, " ").trim();
+}
+
 interface ActionModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -189,9 +211,13 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
 
   const locations = useMemo(() => Array.from(new Set(items.map(i => i.location))).sort((a: string, b: string) => a.localeCompare(b)), [items]);
 
+  // Enhanced search filtering (accent insensitive)
   const filteredItems = useMemo(() => {
+      const normalizedSearch = removeVietnameseTones(searchTerm.toLowerCase());
+      
       return items.filter(item => {
-          const matchSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+          const normalizedName = removeVietnameseTones(item.name.toLowerCase());
+          const matchSearch = normalizedName.includes(normalizedSearch);
           const matchLoc = filterLocation === 'all' || item.location === filterLocation;
           return matchSearch && matchLoc;
       });
@@ -315,7 +341,7 @@ const InventoryManagement: React.FC<InventoryManagementProps> = ({
         {tab === 'stock' && (
             <div className="bg-white rounded-lg shadow-md border border-gray-100 overflow-hidden">
                 <div className="p-4 bg-[#FDF7F8] border-b border-pink-100 flex flex-col md:flex-row gap-4">
-                    <input type="text" placeholder="Tìm kiếm..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-1 border border-gray-300 rounded-md p-2 text-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
+                    <input type="text" placeholder="Tìm kiếm nhanh (hỗ trợ không dấu, VD: 'dau goi')..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-1 border border-gray-300 rounded-md p-2 text-sm focus:ring-[#E5989B] focus:border-[#E5989B]" />
                     <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="border border-gray-300 rounded-md p-2 text-sm bg-white focus:ring-[#E5989B]">
                         <option value="all">Tất cả vị trí</option>
                         {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
