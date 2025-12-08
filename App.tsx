@@ -244,6 +244,12 @@ const App: React.FC = () => {
       if (user) {
           setLoggedInUser(user);
           setLoginError('');
+          // Force Accountant to Inventory view
+          if (user.role === Role.Accountant) {
+              setView('inventory');
+          } else {
+              setView('dashboard');
+          }
       } else {
          setLoginError('Tên đăng nhập hoặc mật khẩu không đúng.');
       }
@@ -263,7 +269,10 @@ const App: React.FC = () => {
       const targetUser = users.find(u => u.role === newRole);
       if (targetUser) {
           setLoggedInUser(targetUser);
-          if (newRole !== Role.Management && view === 'users') {
+          // Role-based redirect
+          if (newRole === Role.Accountant) {
+              setView('inventory');
+          } else if (newRole !== Role.Management && view === 'users') {
               setView('dashboard');
           }
       } else {
@@ -575,7 +584,7 @@ const App: React.FC = () => {
         onLogout={handleLogout}
       />
       <main className="p-4 sm:p-6 lg:p-8">
-        {view === 'dashboard' && (
+        {view === 'dashboard' && loggedInUser.role !== Role.Accountant && (
           <Dashboard
             loggedInUser={loggedInUser}
             services={services}
@@ -587,7 +596,7 @@ const App: React.FC = () => {
           />
         )}
         
-        {view === 'services' && (
+        {view === 'services' && loggedInUser.role !== Role.Accountant && (
           <ServiceManagement
             services={services}
             onAddService={addService}

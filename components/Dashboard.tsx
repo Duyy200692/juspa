@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { User, Service, Promotion, PromotionStatus, Role } from '../types';
 import Button from './shared/Button';
@@ -39,13 +38,20 @@ const Dashboard: React.FC<DashboardProps> = ({
   }, [proposalPromotions]);
 
   const filteredProposals = useMemo(() => {
-      return proposalPromotions.filter(p => {
+      let filteredData = proposalPromotions;
+
+      // RULE: Reception only sees Approved (past/history) items, NOT pending ones.
+      if (loggedInUser.role === Role.Reception) {
+          filteredData = filteredData.filter(p => p.status === PromotionStatus.Approved);
+      }
+
+      return filteredData.filter(p => {
           const date = new Date(p.startDate);
           const matchMonth = filterMonth === 'all' || (date.getMonth() + 1).toString() === filterMonth;
           const matchYear = filterYear === 'all' || date.getFullYear().toString() === filterYear;
           return matchMonth && matchYear;
       }).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-  }, [proposalPromotions, filterMonth, filterYear]);
+  }, [proposalPromotions, filterMonth, filterYear, loggedInUser.role]);
 
   const handleCreateProposal = (promotionData: Omit<Promotion, 'id'> | Promotion) => {
     if ('id' in promotionData) {

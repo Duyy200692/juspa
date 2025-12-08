@@ -25,6 +25,8 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUser
   const activeStyle = "bg-[#E5989B] text-white shadow-sm";
   const inactiveStyle = "text-gray-600 hover:bg-pink-100";
 
+  const isAccountant = currentUser.role === Role.Accountant;
+
   return (
     <>
       <header className="bg-white/80 backdrop-blur-sm shadow-sm p-4 flex flex-col md:flex-row justify-between items-center sticky top-0 z-50 gap-4 md:gap-0">
@@ -33,18 +35,22 @@ const Header: React.FC<HeaderProps> = ({ currentUser, onSwitchRole, onUpdateUser
           <div className="flex flex-col">
               <h1 className="text-xl md:text-2xl font-light text-[#5C3A3A] hidden md:block">Promotion Manager</h1>
               <div className="mt-2 flex flex-wrap items-center gap-2 border border-gray-200 p-1 rounded-lg bg-gray-50">
-                  <button 
-                      onClick={() => onViewChange('dashboard')} 
-                      className={`${navButtonStyle} ${currentView === 'dashboard' ? activeStyle : inactiveStyle}`}
-                  >
-                      Promotions
-                  </button>
-                  <button 
-                      onClick={() => onViewChange('services')}
-                      className={`${navButtonStyle} ${currentView === 'services' ? activeStyle : inactiveStyle}`}
-                  >
-                      Services
-                  </button>
+                  {!isAccountant && (
+                    <button 
+                        onClick={() => onViewChange('dashboard')} 
+                        className={`${navButtonStyle} ${currentView === 'dashboard' ? activeStyle : inactiveStyle}`}
+                    >
+                        Promotions
+                    </button>
+                  )}
+                  {!isAccountant && (
+                    <button 
+                        onClick={() => onViewChange('services')}
+                        className={`${navButtonStyle} ${currentView === 'services' ? activeStyle : inactiveStyle}`}
+                    >
+                        Services
+                    </button>
+                  )}
                   <button 
                       onClick={() => onViewChange('inventory')}
                       className={`${navButtonStyle} ${currentView === 'inventory' ? activeStyle : inactiveStyle}`}
