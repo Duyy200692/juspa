@@ -1,4 +1,4 @@
-# JUSpa Promotion Manager
+# wellness Promotion Manager
 
 Hệ thống quản lý chương trình khuyến mãi nội bộ cho JUSpa, kết nối với Firebase và sẵn sàng để deploy.
 
